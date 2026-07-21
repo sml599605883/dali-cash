@@ -1,4 +1,4 @@
-# dali_cash
+# Dali Cash
 
 A new Flutter project.
 
