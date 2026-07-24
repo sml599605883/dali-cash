@@ -64,7 +64,16 @@ class HomePage extends GetView<MainController> {
                               const HomeHeader(),
                               if (showLoan) ...[
                                 SizedBox(height: ScreenAdapter.height(16)),
-                                LoanOfferCard(offer: loanOffer),
+                                LoanOfferCard(
+                                  offer: loanOffer,
+                                  onTap: loanOffer == null
+                                      ? null
+                                      : () => unawaited(
+                                          controller.applyProduct(
+                                            loanOffer.productId,
+                                          ),
+                                        ),
+                                ),
                               ],
                               if (showBanner) ...[
                                 SizedBox(height: ScreenAdapter.height(16)),
@@ -81,6 +90,9 @@ class HomePage extends GetView<MainController> {
                                   items:
                                       recommendations ??
                                       defaultHomeRecommendations,
+                                  onApply: (item) => unawaited(
+                                    controller.applyProduct(item.productId),
+                                  ),
                                 ),
                               ],
                             ],

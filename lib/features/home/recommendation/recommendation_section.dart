@@ -8,9 +8,11 @@ class RecommendationSection extends StatelessWidget {
   const RecommendationSection({
     super.key,
     this.items = defaultHomeRecommendations,
+    this.onApply,
   });
 
   final List<HomeRecommendationData> items;
+  final ValueChanged<HomeRecommendationData>? onApply;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,7 @@ class RecommendationSection extends StatelessWidget {
         SizedBox(height: ScreenAdapter.height(12)),
         for (var index = 0; index < items.length; index++) ...[
           if (index > 0) SizedBox(height: ScreenAdapter.height(8)),
-          _RecommendationCard(item: items[index]),
+          _RecommendationCard(item: items[index], onApply: onApply),
         ],
       ],
     );
@@ -80,9 +82,10 @@ class _RecommendationHeader extends StatelessWidget {
 }
 
 class _RecommendationCard extends StatelessWidget {
-  const _RecommendationCard({required this.item});
+  const _RecommendationCard({required this.item, required this.onApply});
 
   final HomeRecommendationData item;
+  final ValueChanged<HomeRecommendationData>? onApply;
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +93,9 @@ class _RecommendationCard extends StatelessWidget {
       button: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => debugPrint(
-          '[HomePage] Recommendation card tapped: ${item.productName}',
-        ),
+        onTap: item.productId.trim().isEmpty || item.upscales == -1
+            ? null
+            : _handleTap,
         child: AspectRatio(
           aspectRatio: 343 / 110,
           child: Container(
@@ -157,6 +160,15 @@ class _RecommendationCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _handleTap() {
+    final callback = onApply;
+    if (callback != null) {
+      callback(item);
+      return;
+    }
+    debugPrint('[HomePage] Recommendation card tapped: ${item.productName}');
   }
 
   BoxDecoration _applyDecoration(int upscales) {

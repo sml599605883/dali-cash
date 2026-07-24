@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 import '../client/client_bridge.dart';
 import '../network/api_client.dart';
@@ -16,13 +17,27 @@ class DeviceInfoSync {
   final SessionStore store;
 
   Future<void> sync() async {
-    final platformInfo = await _platformInfo();
+    ClientPlatformInfo? platformInfo;
+    try {
+      debugPrint('[DaliNetworkDiag] requesting platform info');
+      platformInfo = await _platformInfo();
+      debugPrint(
+        '[DaliNetworkDiag] platform info identifier=${platformInfo?.platform}',
+      );
+    } catch (error) {
+      debugPrint(
+        '[DaliNetworkDiag] platform info failed: '
+        '${error.runtimeType}: $error',
+      );
+      rethrow;
+    }
     final identifier = platformInfo?.platform ?? '';
     if (identifier.isEmpty) {
       return;
     }
 
     try {
+      debugPrint('[DaliNetworkDiag] device API request started');
       final response = await apiClient.getDeviceName(
         deviceIdentifier: identifier,
       );
@@ -30,7 +45,12 @@ class DeviceInfoSync {
         deviceName: response.states['extravagates'].stringValue,
         physicalSize: response.states['beachwear'].stringValue,
       );
-    } catch (_) {
+      debugPrint('[DaliNetworkDiag] device API request completed');
+    } catch (error) {
+      debugPrint(
+        '[DaliNetworkDiag] device API request failed: '
+        '${error.runtimeType}: $error',
+      );
       // Device metadata is best-effort and must not block app startup.
     }
   }

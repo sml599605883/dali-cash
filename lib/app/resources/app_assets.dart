@@ -1,6 +1,16 @@
 abstract final class AppAssets {
   static const progressEmpty = 'assets/位图@3x.png';
 
+  static const identityRecommendedLabel =
+      'assets/certification/identity_recommended_label.png';
+  static const identityOtherLabel =
+      'assets/certification/identity_other_label.png';
+  static const identityBack = 'assets/certification/identity_back.png';
+  static const identityUploadDemo =
+      'assets/certification/identity_upload_demo.png';
+  static const identityFaceVerificationDemo =
+      'assets/certification/identity_face_verification_demo.png';
+
   static const loginBackground = 'assets/login/login_background.png';
   static const loginBanner = 'assets/login/login_banner.png';
   static const loginAgreementChecked =

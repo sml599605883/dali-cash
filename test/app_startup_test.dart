@@ -1,34 +1,52 @@
-import 'dart:async';
-
 import 'package:dali_cash/app/app.dart';
+import 'package:dali_cash/app/startup/dali_cash_startup.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
 import 'package:dali_cash/main.dart' as app_main;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('waits for network bootstrap before running the app', () async {
-    final client = ApiClient(ApiConfig());
-    final completer = Completer<ApiClient>();
-    Widget? launchedWidget;
+  tearDown(Get.reset);
 
-    final startup = app_main.startDaliCashApp(
-      bootstrapApi: () => completer.future,
-      runApplication: (widget) => launchedWidget = widget,
+  test('runs the startup gate before beginning network bootstrap', () async {
+    final events = <String>[];
+    Widget? launchedWidget;
+    var bootstrapCalls = 0;
+    var permissionStarts = 0;
+
+    await app_main.startDaliCashApp(
+      setPortraitOrientation: () async {
+        events.add('orientation');
+      },
+      bootstrapApi: () async {
+        bootstrapCalls++;
+        return ApiClient(ApiConfig());
+      },
+      startPermissionLifecycle: () {
+        permissionStarts++;
+      },
+      runApplication: (widget) {
+        events.add('runApp');
+        launchedWidget = widget;
+      },
     );
 
-    await Future<void>.delayed(Duration.zero);
-    expect(launchedWidget, isNull);
+    expect(events, ['orientation', 'runApp']);
+    expect(bootstrapCalls, 0);
+    expect(permissionStarts, 0);
+    expect(launchedWidget, isA<DaliCashStartup>());
+  });
 
-    completer.complete(client);
-    await startup;
+  test('keeps startup side effects outside the root app widget', () {
+    final app = DaliCashApp(
+      initialBinding: MainBinding(apiClient: ApiClient(ApiConfig())),
+    );
 
-    final app = launchedWidget as DaliCashApp;
-    final binding = app.initialBinding! as MainBinding;
-    expect(binding.apiClient, same(client));
+    expect(app, isA<StatelessWidget>());
   });
 }

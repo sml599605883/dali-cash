@@ -5,9 +5,10 @@ import 'package:dali_cash/features/home/home_data.dart';
 import 'package:flutter/material.dart';
 
 class LoanOfferCard extends StatelessWidget {
-  const LoanOfferCard({super.key, this.offer});
+  const LoanOfferCard({super.key, this.offer, this.onTap});
 
   final HomeLoanOfferData? offer;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,7 @@ class LoanOfferCard extends StatelessWidget {
       button: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => debugPrint('[HomePage] Loan offer card tapped'),
+        onTap: onTap ?? () => debugPrint('[HomePage] Loan offer card tapped'),
         child: AspectRatio(
           aspectRatio: 343 / 355,
           child: Container(

@@ -26,6 +26,19 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to take a clear photo of your ID for identity verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access so you can select an ID image for identity verification.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your location while you complete identity verification to support account security and application risk checks.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>We use your device advertising identifier to measure app install attribution and improve product recommendations.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

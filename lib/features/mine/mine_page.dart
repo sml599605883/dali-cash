@@ -3,7 +3,9 @@ import 'dart:ui' as ui;
 import 'package:dali_cash/app/layout/screen_adapter.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
+import 'package:dali_cash/features/main_shell/main_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class MinePage extends StatefulWidget {
@@ -95,6 +97,14 @@ class _MineAccountHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final phoneText = Get.isRegistered<MainController>()
+        ? Obx(
+            () => Text(
+              formatMinePhone(Get.find<MainController>().phoneNumber.value),
+              style: _phoneTextStyle(),
+            ),
+          )
+        : Text('', style: _phoneTextStyle());
     return SizedBox(
       height: ScreenAdapter.height(40),
       child: Row(
@@ -112,19 +122,28 @@ class _MineAccountHeader extends StatelessWidget {
             ),
           ),
           SizedBox(width: ScreenAdapter.width(8)),
-          Text(
-            '962 **** 1300',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: ScreenAdapter.font(22),
-              fontWeight: FontWeight.w700,
-              height: 27 / 22,
-            ),
-          ),
+          phoneText,
         ],
       ),
     );
   }
+
+  TextStyle _phoneTextStyle() {
+    return TextStyle(
+      color: AppColors.textPrimary,
+      fontSize: ScreenAdapter.font(22),
+      fontWeight: FontWeight.w700,
+      height: 27 / 22,
+    );
+  }
+}
+
+String formatMinePhone(String rawPhone) {
+  final phone = rawPhone.trim();
+  if (phone.length <= 7) {
+    return phone;
+  }
+  return '${phone.substring(0, 3)} **** ${phone.substring(phone.length - 4)}';
 }
 
 class _OrderCard extends StatelessWidget {

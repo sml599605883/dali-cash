@@ -374,6 +374,12 @@ void main() {
     expect(find.byKey(const Key('mine-app-version')), findsOneWidget);
   });
 
+  test('formats the stored phone with the Mine masking style', () {
+    expect(formatMinePhone('9123456789'), '912 **** 6789');
+    expect(formatMinePhone('1234567'), '1234567');
+    expect(formatMinePhone('   '), '');
+  });
+
   testWidgets('logs one message for each actionable Mine entry', (
     tester,
   ) async {

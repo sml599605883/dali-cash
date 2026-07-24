@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart';
 
 import '../json/json.dart';
 import 'api_config.dart';
@@ -63,6 +65,87 @@ class ApiClient {
     return post(
       ApiEndpoints.bannerClickRecord,
       data: {'genially': bannerConfigId, 'symbiotes': _randomDigits(6)},
+    );
+  }
+
+  Future<ApiResponse> productApply({
+    required String productId,
+    String source = '0',
+  }) {
+    return post(
+      ApiEndpoints.productApply,
+      data: {
+        'highlands': productId,
+        'coresident': source,
+        'obduratenesses': _randomDigits(6),
+        'guck': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> productDetail({required String productId}) {
+    return post(
+      ApiEndpoints.productDetail,
+      data: {
+        'highlands': productId,
+        'coopting': _randomDigits(6),
+        'excursiveness': _randomDigits(6),
+        'revisionist': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> basicPersonInfo({required String productId}) {
+    return get(
+      ApiEndpoints.basicPersonInfo,
+      params: {'highlands': productId, 'bear': _randomDigits(6)},
+    );
+  }
+
+  Future<ApiResponse> uploadImage({
+    required String sociologeses,
+    required String scabble,
+    required String filePath,
+    required String fileField,
+    String? rapscallion,
+    String? feoffed,
+    String? miscasts,
+    String? pileated,
+    String? infantilisms,
+  }) {
+    return upload(
+      ApiEndpoints.uploadImage,
+      filePath: filePath,
+      fileField: fileField,
+      data: {
+        'sociologeses': sociologeses,
+        'scabble': scabble,
+        'rapscallion': rapscallion,
+        'feoffed': feoffed,
+        'miscasts': miscasts,
+        'pileated': pileated,
+        'infantilisms': infantilisms,
+      },
+    );
+  }
+
+  Future<ApiResponse> saveBasicInfo({
+    required String annealers,
+    required String imputes,
+    required String crocidolites,
+    required String sociologeses,
+    required String rapscallion,
+  }) {
+    return post(
+      ApiEndpoints.saveBasicInfo,
+      data: {
+        'annealers': annealers,
+        'imputes': imputes,
+        'crocidolites': crocidolites,
+        'sociologeses': sociologeses,
+        'rapscallion': rapscallion,
+        'palefaces': _randomDigits(6),
+      },
     );
   }
 
@@ -170,6 +253,48 @@ class ApiClient {
     );
   }
 
+  Future<bool> bootstrapBaseUrls() async {
+    if (await _isBaseUrlReachable(config.apiBaseUrl)) {
+      return true;
+    }
+
+    if (config.remoteConfigUrl.isEmpty) {
+      return false;
+    }
+
+    try {
+      final response = await dio.get<dynamic>(config.remoteConfigUrl);
+      final remoteConfig = _parseRemoteConfig(response.data);
+      final apiBaseUrl = remoteConfig['apiBaseUrl'].stringValue;
+      final webBaseUrl = remoteConfig['webBaseUrl'].stringValue;
+      if (apiBaseUrl.isNotEmpty) {
+        config.apiBaseUrl = apiBaseUrl;
+      }
+      if (webBaseUrl.isNotEmpty) {
+        config.webBaseUrl = webBaseUrl;
+      }
+      if (apiBaseUrl.isEmpty) {
+        return false;
+      }
+      return _isBaseUrlReachable(apiBaseUrl);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _isBaseUrlReachable(String baseUrl) async {
+    if (baseUrl.isEmpty) {
+      return false;
+    }
+    try {
+      final response = await dio.getUri<dynamic>(Uri.parse(baseUrl));
+      final statusCode = response.statusCode;
+      return statusCode != null && statusCode < 500;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<ApiResponse> _execute(
     Future<Response<dynamic>> Function() request,
   ) async {
@@ -177,6 +302,10 @@ class ApiClient {
       final response = await request();
       return _handleResponse(response.data);
     } on DioException catch (error) {
+      debugPrint(
+        '[DaliNetworkDiag] Dio failure uri=${error.requestOptions.uri} '
+        'type=${error.type} error=${error.error}',
+      );
       throw ApiBusinessException(ApiErrorMessage.resolve(error));
     }
   }
@@ -205,6 +334,26 @@ class ApiClient {
   String _randomDigits(int length) {
     return config.randomDigitsProvider?.call(length) ??
         ApiSignature.randomDigits(length);
+  }
+
+  Json _parseRemoteConfig(dynamic raw) {
+    if (raw is Map) {
+      return Json(raw);
+    }
+    final body = raw?.toString().trim() ?? '';
+    if (body.isEmpty) {
+      return Json(null);
+    }
+
+    final parsed = Json.parse(body);
+    if (parsed.mapOrNull != null) {
+      return parsed;
+    }
+    try {
+      return Json.parseBytes(base64Decode(body));
+    } catch (_) {
+      return Json(null);
+    }
   }
 
   String _url(String path) {

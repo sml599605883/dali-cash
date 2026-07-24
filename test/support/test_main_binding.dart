@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_response.dart';
+import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
 import 'package:dio/dio.dart';
 
@@ -18,7 +19,12 @@ MainBinding testMainBinding() {
 }
 
 class NoNetworkApiClient extends ApiClient {
-  NoNetworkApiClient() : super(ApiConfig(), dio: _failFastDio());
+  NoNetworkApiClient() : super(ApiConfig(), dio: _failFastDio()) {
+    final store = SessionStore.memory();
+    config.sessionStore = store;
+    unawaited(store.saveSessionId('test-session'));
+    unawaited(store.savePhone('9620001300'));
+  }
 
   final Completer<ApiResponse> _homeRequest = Completer<ApiResponse>();
 

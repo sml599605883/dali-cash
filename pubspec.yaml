@@ -38,8 +38,12 @@ dependencies:
   dio: ^5.9.0
   encrypt: ^5.0.3
   flutter_easyloading: ^3.0.5
+  flutter_image_compress: ^2.4.0
   get: ^4.7.3
+  image_picker: ^1.2.2
   package_info_plus: ^10.2.1
+  path_provider: ^2.1.5
+  permission_handler: ^11.4.0
   shared_preferences: ^2.5.5
 
 dev_dependencies:
@@ -72,6 +76,7 @@ flutter:
     - assets/home/
     - assets/tabbar/
     - assets/mine/
+    - assets/certification/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

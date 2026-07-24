@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -77,6 +78,47 @@ void main() {
     expect(request.data, {'genially': 'banner-42', 'symbiotes': '123456'});
   });
 
+  test('productApply posts documented product and source fields', () async {
+    await client.productApply(productId: 'product-42', source: '0');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.productApply));
+    expect(request.data, {
+      'highlands': 'product-42',
+      'coresident': '0',
+      'obduratenesses': '123456',
+      'guck': '123456',
+    });
+  });
+
+  test('productDetail posts documented product and generated fields', () async {
+    await client.productDetail(productId: 'product-42');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.productDetail));
+    expect(request.data, {
+      'highlands': 'product-42',
+      'coopting': '123456',
+      'excursiveness': '123456',
+      'revisionist': '123456',
+    });
+  });
+
+  test(
+    'basicPersonInfo gets documented product and generated fields',
+    () async {
+      await client.basicPersonInfo(productId: 'product-42');
+
+      final request = adapter.lastRequest!;
+      expect(request.method, 'GET');
+      expect(request.path, endsWith(ApiEndpoints.basicPersonInfo));
+      expect(request.queryParameters['highlands'], 'product-42');
+      expect(request.queryParameters['bear'], '123456');
+    },
+  );
+
   test('sendSmsCode posts documented fields and generated value', () async {
     await client.sendSmsCode(phone: '9123456789');
 
@@ -154,6 +196,59 @@ void main() {
     );
   });
 
+  test('identity upload sends the documented Dali multipart fields', () async {
+    final directory = await Directory.systemTemp.createTemp('dali-identity-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/id.jpg')..writeAsStringSync('image');
+
+    await client.uploadImage(
+      sociologeses: '11',
+      scabble: '2',
+      filePath: file.path,
+      fileField: 'attach',
+      rapscallion: 'PRC ID',
+    );
+
+    final formData = adapter.lastRequest!.data as FormData;
+    expect(
+      formData.fields,
+      containsAll(<Matcher>[
+        isA<MapEntry<String, String>>()
+            .having((entry) => entry.key, 'key', 'sociologeses')
+            .having((entry) => entry.value, 'value', '11'),
+        isA<MapEntry<String, String>>()
+            .having((entry) => entry.key, 'key', 'scabble')
+            .having((entry) => entry.value, 'value', '2'),
+        isA<MapEntry<String, String>>()
+            .having((entry) => entry.key, 'key', 'rapscallion')
+            .having((entry) => entry.value, 'value', 'PRC ID'),
+      ]),
+    );
+    expect(formData.files.single.key, 'attach');
+  });
+
+  test('saveBasicInfo posts the documented identity fields', () async {
+    await client.saveBasicInfo(
+      annealers: '31-05-1995',
+      imputes: 'ID-9988',
+      crocidolites: 'JUAN DELA CRUZ',
+      sociologeses: '11',
+      rapscallion: 'PRC',
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.saveBasicInfo));
+    expect(request.data, {
+      'annealers': '31-05-1995',
+      'imputes': 'ID-9988',
+      'crocidolites': 'JUAN DELA CRUZ',
+      'sociologeses': '11',
+      'rapscallion': 'PRC',
+      'palefaces': '123456',
+    });
+  });
+
   test('missing upload file fails before transport', () async {
     expect(
       () => client.upload(
@@ -214,6 +309,102 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('bootstrap keeps default URLs when probe status is below 500', () async {
+    config
+      ..webBaseUrl = 'http://web.test'
+      ..remoteConfigUrl = 'http://config.test/bootstrap';
+    adapter.enqueueResponse(statusCode: 404);
+
+    final reachable = await client.bootstrapBaseUrls();
+
+    expect(reachable, isTrue);
+    expect(adapter.requests, hasLength(1));
+    expect(adapter.requests.single.uri.toString(), 'http://api.test/manlikely');
+    expect(config.apiBaseUrl, 'http://api.test/manlikely');
+    expect(config.webBaseUrl, 'http://web.test');
+  });
+
+  test('bootstrap switches to plain remote URLs after server failure', () async {
+    config
+      ..webBaseUrl = 'http://web.test'
+      ..remoteConfigUrl = 'http://config.test/bootstrap';
+    adapter
+      ..enqueueResponse(statusCode: 500)
+      ..enqueueResponse(
+        body:
+            '{"apiBaseUrl":"https://backup-api.test/root","webBaseUrl":"https://backup-web.test"}',
+      )
+      ..enqueueResponse(statusCode: 204);
+
+    final reachable = await client.bootstrapBaseUrls();
+
+    expect(reachable, isTrue);
+    expect(adapter.requests.map((request) => request.uri.toString()), <String>[
+      'http://api.test/manlikely',
+      'http://config.test/bootstrap',
+      'https://backup-api.test/root',
+    ]);
+    expect(config.apiBaseUrl, 'https://backup-api.test/root');
+    expect(config.webBaseUrl, 'https://backup-web.test');
+  });
+
+  test('bootstrap decodes base64 remote URLs after server failure', () async {
+    config
+      ..webBaseUrl = 'http://web.test'
+      ..remoteConfigUrl = 'http://config.test/bootstrap';
+    final encoded = base64Encode(
+      utf8.encode(
+        '{"apiBaseUrl":"https://encoded-api.test/root","webBaseUrl":"https://encoded-web.test"}',
+      ),
+    );
+    adapter
+      ..enqueueResponse(statusCode: 503)
+      ..enqueueResponse(
+        body: encoded,
+        contentType: Headers.textPlainContentType,
+      )
+      ..enqueueResponse(statusCode: 404);
+
+    final reachable = await client.bootstrapBaseUrls();
+
+    expect(reachable, isTrue);
+    expect(config.apiBaseUrl, 'https://encoded-api.test/root');
+    expect(config.webBaseUrl, 'https://encoded-web.test');
+  });
+
+  test(
+    'bootstrap keeps default URLs when remote config URL is empty',
+    () async {
+      config.webBaseUrl = 'http://web.test';
+      adapter.enqueueResponse(statusCode: 500);
+
+      final reachable = await client.bootstrapBaseUrls();
+
+      expect(reachable, isFalse);
+      expect(adapter.requests, hasLength(1));
+      expect(config.apiBaseUrl, 'http://api.test/manlikely');
+      expect(config.webBaseUrl, 'http://web.test');
+    },
+  );
+
+  test('bootstrap keeps default URLs when remote config is invalid', () async {
+    config
+      ..webBaseUrl = 'http://web.test'
+      ..remoteConfigUrl = 'http://config.test/bootstrap';
+    adapter
+      ..enqueueResponse(statusCode: 500)
+      ..enqueueResponse(
+        body: 'not-json-or-base64',
+        contentType: Headers.textPlainContentType,
+      );
+
+    final reachable = await client.bootstrapBaseUrls();
+
+    expect(reachable, isFalse);
+    expect(config.apiBaseUrl, 'http://api.test/manlikely');
+    expect(config.webBaseUrl, 'http://web.test');
   });
 
   test('setProxy routes requests through configured proxy', () async {
@@ -307,8 +498,25 @@ void main() {
 
 class RecordingAdapter implements HttpClientAdapter {
   RequestOptions? lastRequest;
+  final List<RequestOptions> requests = <RequestOptions>[];
   String responseBody = '{"felicitous":0,"cuckoo":"success","unsphered":{}}';
   DioException? error;
+  final List<_QueuedAdapterResponse> _queuedResponses =
+      <_QueuedAdapterResponse>[];
+
+  void enqueueResponse({
+    String body = '',
+    int statusCode = 200,
+    String contentType = Headers.jsonContentType,
+  }) {
+    _queuedResponses.add(
+      _QueuedAdapterResponse(
+        body: body,
+        statusCode: statusCode,
+        contentType: contentType,
+      ),
+    );
+  }
 
   @override
   Future<ResponseBody> fetch(
@@ -317,19 +525,37 @@ class RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     lastRequest = options;
+    requests.add(options);
     final failure = error;
     if (failure != null) {
       throw failure;
     }
+    final queued = _queuedResponses.isEmpty
+        ? null
+        : _queuedResponses.removeAt(0);
     return ResponseBody.fromString(
-      responseBody,
-      200,
+      queued?.body ?? responseBody,
+      queued?.statusCode ?? 200,
       headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
+        Headers.contentTypeHeader: [
+          queued?.contentType ?? Headers.jsonContentType,
+        ],
       },
     );
   }
 
   @override
   void close({bool force = false}) {}
+}
+
+class _QueuedAdapterResponse {
+  const _QueuedAdapterResponse({
+    required this.body,
+    required this.statusCode,
+    required this.contentType,
+  });
+
+  final String body;
+  final int statusCode;
+  final String contentType;
 }

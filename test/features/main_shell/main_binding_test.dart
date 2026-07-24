@@ -17,12 +17,20 @@ void main() {
 
   tearDown(Get.reset);
 
-  test(
-    'creates a permanent default client and controller when absent',
-    () async {
-      MainBinding().dependencies();
+  test('creates a permanent default client and controller when absent', () {
+    MainBinding().dependencies();
 
-      expect(Get.find<ApiClient>(), isA<ApiClient>());
+    expect(Get.find<ApiClient>(), isA<ApiClient>());
+    expect(Get.find<MainController>(), isA<MainController>());
+  });
+
+  test(
+    'creates a permanent injected client and controller when absent',
+    () async {
+      final client = ApiClient(ApiConfig());
+      MainBinding(apiClient: client, showError: fail).dependencies();
+
+      expect(Get.find<ApiClient>(), same(client));
       expect(Get.find<MainController>(), isA<MainController>());
       expect(await Get.delete<ApiClient>(), isFalse);
       expect(Get.isRegistered<ApiClient>(), isTrue);

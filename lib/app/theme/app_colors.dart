@@ -36,4 +36,10 @@ abstract final class AppColors {
   static const loginInputDivider = Color.fromRGBO(3, 26, 3, 1);
   static const loginCountdownText = Color.fromRGBO(190, 190, 190, 1);
   static const loginAgreementBorder = Color.fromRGBO(153, 153, 153, 1);
+  static const identityDivider = Color.fromRGBO(225, 225, 225, 0.57);
+  static const identityPromptBackground = Color.fromRGBO(246, 18, 18, 1);
+  static const identityPickerSelected = Color.fromRGBO(13, 27, 23, 1);
+  static const identityPickerText = Color.fromRGBO(102, 102, 102, 1);
+  static const identityPickerMuted = Color.fromRGBO(153, 153, 153, 1);
+  static const identityPickerDivider = Color.fromRGBO(238, 238, 238, 1);
 }

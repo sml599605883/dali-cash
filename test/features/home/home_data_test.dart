@@ -115,6 +115,25 @@ void main() {
       expect(recommendation.upscales, 42);
     });
 
+    test('converts numeric string fields through Json.stringValue', () {
+      final data = HomeData.fromJson(
+        Json({
+          'clingiest': [
+            {
+              'sociologeses': 'QuininaSpeculation',
+              'jambes': [
+                {'underfeeding': 42, 'preslaughter': 7, 'adapting': 5000},
+              ],
+            },
+          ],
+        }),
+      );
+
+      expect(data.loanOffer?.productId, '42');
+      expect(data.loanOffer?.productName, '7');
+      expect(data.loanOffer?.amount, '5000');
+    });
+
     test('prioritizes the first LARGE_CARD over SMALL_CARD', () {
       final data = HomeData.fromJson(
         Json({

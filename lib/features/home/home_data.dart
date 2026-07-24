@@ -19,7 +19,7 @@ class HomeData {
         continue;
       }
 
-      final type = _string(section['sociologeses']);
+      final type = section['sociologeses'].stringValue;
       final items = section['jambes'].listOrNull;
       if (items == null) {
         continue;
@@ -81,17 +81,17 @@ class HomeLoanOfferData {
 
   factory HomeLoanOfferData.fromJson(Json json) {
     return HomeLoanOfferData(
-      productId: _string(json['underfeeding']),
-      productName: _string(json['preslaughter']),
-      productLogo: _string(json['creasing']),
-      amount: _string(json['adapting']),
-      amountCaption: _string(json['hotel']),
-      loanTerm: _string(json['telfered']),
-      loanTermCaption: _string(json['typefounder']),
-      interestRate: _string(json['counterfeiters']),
-      interestRateCaption: _string(json['euphonically']),
-      buttonText: _string(json['weldor']),
-      loanProcessText: _string(json['outgnaws']),
+      productId: json['underfeeding'].stringValue,
+      productName: json['preslaughter'].stringValue,
+      productLogo: json['creasing'].stringValue,
+      amount: json['adapting'].stringValue,
+      amountCaption: json['hotel'].stringValue,
+      loanTerm: json['telfered'].stringValue,
+      loanTermCaption: json['typefounder'].stringValue,
+      interestRate: json['counterfeiters'].stringValue,
+      interestRateCaption: json['euphonically'].stringValue,
+      buttonText: json['weldor'].stringValue,
+      loanProcessText: json['outgnaws'].stringValue,
     );
   }
 
@@ -117,9 +117,9 @@ class HomeBannerData {
 
   factory HomeBannerData.fromJson(Json json) {
     return HomeBannerData(
-      id: _string(json['underfeeding']),
-      imageUrl: _string(json['ephemeras']),
-      targetUrl: _string(json['millipede']),
+      id: json['underfeeding'].stringValue,
+      imageUrl: json['ephemeras'].stringValue,
+      targetUrl: json['millipede'].stringValue,
     );
   }
 
@@ -143,13 +143,13 @@ class HomeRecommendationData {
 
   factory HomeRecommendationData.fromJson(Json json) {
     return HomeRecommendationData(
-      productId: _string(json['underfeeding']),
-      productName: _string(json['preslaughter']),
-      productLogo: _string(json['creasing']),
-      amount: _string(json['adapting']),
-      amountCaption: _string(json['hotel']),
-      interestRate: _string(json['fishtailing']),
-      loanTerm: _string(json['telfered']),
+      productId: json['underfeeding'].stringValue,
+      productName: json['preslaughter'].stringValue,
+      productLogo: json['creasing'].stringValue,
+      amount: json['adapting'].stringValue,
+      amountCaption: json['hotel'].stringValue,
+      interestRate: json['fishtailing'].stringValue,
+      loanTerm: json['telfered'].stringValue,
       footer: _joinTags(json['finos']),
       upscales: _int(json['upscales']),
     );
@@ -192,11 +192,6 @@ HomeLoanOfferData? _firstLoanOffer(List<Json> items) {
     }
   }
   return null;
-}
-
-String _string(Json json) {
-  final value = json.value;
-  return value is String ? value : '';
 }
 
 int _int(Json json) {

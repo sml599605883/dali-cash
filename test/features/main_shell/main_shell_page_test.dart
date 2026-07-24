@@ -8,11 +8,13 @@ import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_endpoints.dart';
 import 'package:dali_cash/core/network/api_response.dart';
+import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/features/home/home_data.dart';
 import 'package:dali_cash/features/home/widgets/home_header.dart';
 import 'package:dali_cash/features/home/widgets/loan_offer_card.dart';
 import 'package:dali_cash/features/home/widgets/promo_banner.dart';
+import 'package:dali_cash/features/login/login_page.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
 import 'package:dali_cash/features/main_shell/main_controller.dart';
 import 'package:dali_cash/features/main_shell/main_shell_page.dart';
@@ -107,10 +109,138 @@ void main() {
     },
   );
 
+  testWidgets('logged-out protected tab returns to Home after login', (
+    tester,
+  ) async {
+    final sessionStore = SessionStore.memory();
+    var loginCalls = 0;
+    final controller = _registerController(
+      sessionStore: sessionStore,
+      navigateToLogin: () => loginCalls++,
+    );
+    await _pumpShell(tester);
+
+    await tester.tap(find.byKey(const Key('tab-progress')));
+    await tester.pump();
+
+    expect(loginCalls, 1);
+    expect(controller.selectedIndex.value, 0);
+    expect(find.byKey(const Key('tab-home-selected')), findsOneWidget);
+
+    await sessionStore.saveSessionId('session-id');
+    await tester.pump();
+    expect(controller.selectedIndex.value, 0);
+
+    await tester.tap(find.byKey(const Key('tab-progress')));
+    await tester.pump();
+    expect(controller.selectedIndex.value, 1);
+  });
+
+  testWidgets('logged-out hero apply returns Home without auto-resuming', (
+    tester,
+  ) async {
+    final sessionStore = SessionStore.memory();
+    var loginCalls = 0;
+    final appliedProductIds = <String>[];
+    final controller = _registerController(
+      sessionStore: sessionStore,
+      navigateToLogin: () => loginCalls++,
+      onAuthenticatedProductApply: (productId) async {
+        appliedProductIds.add(productId);
+      },
+    );
+    controller.homeData.value = _deliveredHomeData();
+    await _pumpShell(tester);
+
+    await tester.tap(find.byKey(const Key('home-apply-now')));
+    await tester.pump();
+
+    expect(loginCalls, 1);
+    expect(controller.selectedIndex.value, 0);
+    expect(appliedProductIds, isEmpty);
+
+    await sessionStore.saveSessionId('session-id');
+    await tester.pump();
+    expect(appliedProductIds, isEmpty);
+
+    await tester.tap(find.byKey(const Key('home-apply-now')));
+    await tester.pump();
+    expect(appliedProductIds, ['server-loan']);
+  });
+
+  testWidgets('logged-out recommendation apply uses the same login gate', (
+    tester,
+  ) async {
+    final sessionStore = SessionStore.memory();
+    var loginCalls = 0;
+    final appliedProductIds = <String>[];
+    final controller = _registerController(
+      sessionStore: sessionStore,
+      navigateToLogin: () => loginCalls++,
+      onAuthenticatedProductApply: (productId) async {
+        appliedProductIds.add(productId);
+      },
+    );
+    controller.homeData.value = HomeData(
+      loanOffer: null,
+      banners: const <HomeBannerData>[],
+      recommendations: [_recommendation(upscales: 1)],
+    );
+    await _pumpShell(tester);
+
+    await tester.tap(find.byKey(const Key('home-recommendation-card-1')));
+    await tester.pump();
+
+    expect(loginCalls, 1);
+    expect(controller.selectedIndex.value, 0);
+    expect(appliedProductIds, isEmpty);
+
+    await sessionStore.saveSessionId('session-id');
+    await tester.pump();
+    expect(appliedProductIds, isEmpty);
+
+    await tester.tap(find.byKey(const Key('home-recommendation-card-1')));
+    await tester.pump();
+    expect(appliedProductIds, ['product-1']);
+  });
+
   testWidgets('root app installs GetMaterialApp runtime', (tester) async {
     await tester.pumpWidget(DaliCashApp(initialBinding: testMainBinding()));
 
     expect(find.byType(GetMaterialApp), findsOneWidget);
+  });
+
+  testWidgets('real login route is not duplicated and closes back to Home', (
+    tester,
+  ) async {
+    final apiClient = _NoNetworkApiClient();
+    apiClient.config.sessionStore = SessionStore.memory();
+    await tester.pumpWidget(
+      DaliCashApp(
+        initialBinding: MainBinding(
+          apiClient: apiClient,
+          showError: (_) {},
+          showNotice: (_) {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final controller = Get.find<MainController>();
+    await controller.selectTab(2);
+    await tester.pumpAndSettle();
+    await controller.selectTab(2);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(controller.selectedIndex.value, 0);
+
+    Get.back<void>();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginPage), findsNothing);
+    expect(find.byKey(const Key('tab-home-selected')), findsOneWidget);
+    expect(controller.selectedIndex.value, 0);
   });
 
   testWidgets(
@@ -127,6 +257,7 @@ void main() {
         ),
         dio: dio,
       );
+      client.config.sessionStore = _LoggedInSessionStore();
       await tester.pumpWidget(
         DaliCashApp(
           initialBinding: MainBinding(
@@ -385,11 +516,19 @@ HomeRecommendationData _recommendation({required int upscales}) {
   );
 }
 
-MainController _registerController() {
+MainController _registerController({
+  SessionStore? sessionStore,
+  LoginRouteNavigator? navigateToLogin,
+  AuthenticatedProductApply? onAuthenticatedProductApply,
+}) {
+  final apiClient = _NoNetworkApiClient();
+  apiClient.config.sessionStore = sessionStore ?? _LoggedInSessionStore();
   final controller = _ViewMainController(
-    apiClient: _NoNetworkApiClient(),
+    apiClient: apiClient,
     showError: (_) {},
     showNotice: (_) {},
+    navigateToLogin: navigateToLogin,
+    onAuthenticatedProductApply: onAuthenticatedProductApply,
   );
   Get.put<MainController>(controller);
   return controller;
@@ -490,12 +629,21 @@ class _ViewMainController extends MainController {
     required super.apiClient,
     required super.showError,
     required super.showNotice,
+    super.navigateToLogin,
+    super.onAuthenticatedProductApply,
   });
 
   @override
   void onReady() {
     // View tests assign homeData directly; lifecycle dispatch is tested separately.
   }
+}
+
+class _LoggedInSessionStore extends SessionStore {
+  _LoggedInSessionStore() : super.memory();
+
+  @override
+  Future<String> sessionId() async => 'session-id';
 }
 
 class _HomeDialogAdapter implements HttpClientAdapter {

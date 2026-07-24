@@ -35,4 +35,27 @@ void main() {
     expect(await store.sessionId(), '');
     expect(await store.phone(), '9123456789');
   });
+
+  test('stores and clears product detail identity prompts', () async {
+    final store = SessionStore.memory();
+
+    await store.saveProductDetailPrompt(' Upload prompt ');
+    await store.saveProductDetailIdentityConfirmationPrompt(
+      ' Confirmation prompt ',
+    );
+    await store.saveProductDetailFacePrompt(' Face prompt ');
+
+    expect(store.productDetailPrompt(), 'Upload prompt');
+    expect(
+      store.productDetailIdentityConfirmationPrompt(),
+      'Confirmation prompt',
+    );
+    expect(store.productDetailFacePrompt(), 'Face prompt');
+
+    await store.clearPersistent();
+
+    expect(store.productDetailPrompt(), '');
+    expect(store.productDetailIdentityConfirmationPrompt(), '');
+    expect(store.productDetailFacePrompt(), '');
+  });
 }

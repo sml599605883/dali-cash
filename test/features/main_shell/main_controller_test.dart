@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:dali_cash/app/navigation/navigation_helper.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_exception.dart';
 import 'package:dali_cash/core/network/api_response.dart';
+import 'package:dali_cash/core/permissions/permission_coordinator.dart';
 import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/features/home/home_data.dart';
 import 'package:dali_cash/features/main_shell/main_controller.dart';
@@ -20,9 +22,12 @@ void main() {
   late List<String> notices;
   late MainController controller;
 
-  setUp(() {
+  setUp(() async {
     Get.testMode = true;
     apiClient = _ScriptedApiClient();
+    final sessionStore = SessionStore.memory();
+    await sessionStore.saveSessionId('session-id');
+    apiClient.config.sessionStore = sessionStore;
     errors = <String>[];
     notices = <String>[];
     controller = MainController(
@@ -220,6 +225,133 @@ void main() {
     expect(apiClient.homeCalls, 0);
   });
 
+  test(
+    'logged-out protected tab opens login and waits for a second tap',
+    () async {
+      final sessionStore = SessionStore.memory();
+      apiClient.config.sessionStore = sessionStore;
+      var loginCalls = 0;
+      final value = MainController(
+        apiClient: apiClient,
+        showError: errors.add,
+        showNotice: notices.add,
+        navigateToLogin: () => loginCalls++,
+      );
+      addTearDown(value.onClose);
+
+      await value.selectTab(2);
+
+      expect(loginCalls, 1);
+      expect(value.selectedIndex.value, 0);
+
+      await sessionStore.saveSessionId('session-id');
+      expect(value.selectedIndex.value, 0);
+
+      await value.selectTab(2);
+      expect(value.selectedIndex.value, 2);
+      expect(loginCalls, 1);
+    },
+  );
+
+  test(
+    'logged-out product opens login and never auto-resumes after success',
+    () async {
+      final sessionStore = SessionStore.memory();
+      apiClient.config.sessionStore = sessionStore;
+      var loginCalls = 0;
+      final appliedProductIds = <String>[];
+      final value = MainController(
+        apiClient: apiClient,
+        showError: errors.add,
+        showNotice: notices.add,
+        navigateToLogin: () => loginCalls++,
+        onAuthenticatedProductApply: (productId) async {
+          appliedProductIds.add(productId);
+        },
+      );
+      addTearDown(value.onClose);
+
+      await value.applyProduct(' loan-42 ');
+
+      expect(loginCalls, 1);
+      expect(appliedProductIds, isEmpty);
+
+      await sessionStore.saveSessionId('session-id');
+      expect(appliedProductIds, isEmpty);
+
+      await value.applyProduct(' loan-42 ');
+      expect(appliedProductIds, ['loan-42']);
+      expect(loginCalls, 1);
+    },
+  );
+
+  test('overlapping product taps dispatch only one apply', () async {
+    final sessionStore = SessionStore.memory();
+    await sessionStore.saveSessionId('session-id');
+    apiClient.config.sessionStore = sessionStore;
+    final applyStarted = Completer<void>();
+    final releaseApply = Completer<void>();
+    final appliedProductIds = <String>[];
+    final value = MainController(
+      apiClient: apiClient,
+      showError: errors.add,
+      showNotice: notices.add,
+      onAuthenticatedProductApply: (productId) async {
+        appliedProductIds.add(productId);
+        applyStarted.complete();
+        await releaseApply.future;
+      },
+    );
+    addTearDown(value.onClose);
+
+    final first = value.applyProduct(' loan-42 ');
+    await applyStarted.future;
+    final second = value.applyProduct(' loan-42 ');
+    releaseApply.complete();
+    await Future.wait([first, second]);
+
+    expect(appliedProductIds, ['loan-42']);
+  });
+
+  test(
+    'default authenticated product action delegates to NavigationHelper',
+    () async {
+      Get.put<ApiClient>(apiClient);
+      NavigationHelper.loadingPresenter = () async {};
+      NavigationHelper.loadingDismissor = () async {};
+      NavigationHelper.errorPresenter = (_) async {};
+      NavigationHelper.certificationLocationRequester = () async {
+        return CertificationLocationDecision.granted;
+      };
+      addTearDown(() {
+        NavigationHelper.loadingPresenter =
+            NavigationHelper.defaultLoadingPresenter;
+        NavigationHelper.loadingDismissor =
+            NavigationHelper.defaultLoadingDismissor;
+        NavigationHelper.errorPresenter =
+            NavigationHelper.defaultErrorPresenter;
+        NavigationHelper.certificationLocationRequester =
+            NavigationHelper.defaultCertificationLocationRequester;
+      });
+
+      await controller.applyProduct(' loan-42 ');
+
+      expect(apiClient.appliedProducts, ['loan-42']);
+      expect(apiClient.applySources, ['0']);
+    },
+  );
+
+  test('opening Mine refreshes the phone saved by login', () async {
+    final sessionStore = SessionStore.memory();
+    await sessionStore.saveSessionId('session-id');
+    await sessionStore.savePhone('9123456789');
+    apiClient.config.sessionStore = sessionStore;
+
+    await controller.selectTab(2);
+
+    expect(controller.phoneNumber.value, '9123456789');
+  });
+
   test('invalid banner fields do not report even when logged in', () async {
     final sessionStore = SessionStore.memory();
     await sessionStore.saveSessionId('session-id');
@@ -325,6 +457,8 @@ class _ScriptedApiClient extends ApiClient {
   final List<String> events = [];
   final List<int> dialogScenes = [];
   final List<String> bannerClickIds = [];
+  final List<String> appliedProducts = [];
+  final List<String> applySources = [];
   Object? bannerClickError;
   int homeCalls = 0;
 
@@ -351,6 +485,16 @@ class _ScriptedApiClient extends ApiClient {
     if (error != null) {
       throw error;
     }
+    return _dialogResponse(0);
+  }
+
+  @override
+  Future<ApiResponse> productApply({
+    required String productId,
+    String source = '0',
+  }) async {
+    appliedProducts.add(productId);
+    applySources.add(source);
     return _dialogResponse(0);
   }
 }

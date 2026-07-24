@@ -8,7 +8,7 @@ class SceneDelegate: FlutterSceneDelegate {
     options connectionOptions: UIScene.ConnectionOptions
   ) {
     super.scene(scene, willConnectTo: session, options: connectionOptions)
-    ProxyBridgeRegistrar.shared.register(
+    ClientBridgeRegistrar.shared.register(
       with: window?.rootViewController as? FlutterViewController
     )
   }

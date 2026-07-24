@@ -12,6 +12,7 @@ class ApiConfig {
   ApiConfig({
     this.apiBaseUrl = 'http://8.220.184.117/manlikely',
     this.webBaseUrl = 'http://8.220.184.117',
+    this.remoteConfigUrl = '',
     this.signatureSecret = '56307ac78c816ee671dfe506c17eddc7',
     this.encryptKey = 'ba927fc9e96f9676',
     this.encryptIv = '16f7ddfc7aef7a2e',
@@ -26,6 +27,7 @@ class ApiConfig {
 
   String apiBaseUrl;
   String webBaseUrl;
+  String remoteConfigUrl;
   String signatureSecret;
   String encryptKey;
   String encryptIv;
