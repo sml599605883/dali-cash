@@ -10,7 +10,35 @@ import UIKit
     ClientBridgeRegistrar.shared.register(
       with: window?.rootViewController as? FlutterViewController
     )
+    application.registerForRemoteNotifications()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    super.application(
+      application,
+      didRegisterForRemoteNotificationsWithDeviceToken: deviceToken
+    )
+    let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+    ClientBridgeRegistrar.shared.updatePushToken(token)
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    super.application(
+      application,
+      didFailToRegisterForRemoteNotificationsWithError: error
+    )
+  }
+
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    ClientBridgeRegistrar.shared.publishTrackingStatus()
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {

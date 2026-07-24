@@ -135,11 +135,14 @@ abstract final class NavigationHelper {
     };
   }
 
-  static Future<T?>? toLogin<T extends Object?>() {
+  static Future<T?>? toLogin<T extends Object?>({String productId = ''}) {
     if (Get.currentRoute == AppRoutes.login) {
       return null;
     }
-    return Get.toNamed<T>(AppRoutes.login);
+    return Get.toNamed<T>(
+      AppRoutes.login,
+      arguments: {'highlands': productId.trim()},
+    );
   }
 
   static Future<T?>? toIdentitySelection<T extends Object?>({
@@ -198,6 +201,14 @@ abstract final class NavigationHelper {
     }
   }
 
+  static Future<void> continueProductDetailFlow(String productId) async {
+    final normalizedProductId = productId.trim();
+    if (normalizedProductId.isEmpty) return;
+    await _productFlow(
+      Get.find<ApiClient>(),
+    ).loadProductDetail(normalizedProductId);
+  }
+
   static Future<void> _dispatchDeepLink(DaliDeepLink target) async {
     switch (target.kind) {
       case DaliDeepLinkKind.home:
@@ -237,7 +248,7 @@ abstract final class NavigationHelper {
   static DaliProductNavigationFlow _productFlow(ApiClient apiClient) {
     return DaliProductNavigationFlow(
       apiClient: apiClient,
-      openLogin: () => toLogin<void>(),
+      openLogin: (productId) => toLogin<void>(productId: productId),
       showLoading: loadingPresenter,
       dismissLoading: loadingDismissor,
       showError: errorPresenter,

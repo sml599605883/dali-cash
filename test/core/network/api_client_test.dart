@@ -249,6 +249,108 @@ void main() {
     });
   });
 
+  test('face token posts the documented Dali fields', () async {
+    await client.getFaceIdToken(orderNo: 'ORDER-42', type: '0');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.getFaceIdToken));
+    expect(request.data, {
+      'titled': 'ORDER-42',
+      'sociologeses': '0',
+      'motormen': '123456',
+      'snakeroots': '123456',
+    });
+  });
+
+  test('location report posts the documented Dali fields', () async {
+    await client.reportLocation(
+      province: 'Metro Manila',
+      countryCode: 'PH',
+      country: 'Philippines',
+      street: 'Ayala Ave',
+      latitude: '14.5547',
+      longitude: '121.0244',
+      city: 'Makati',
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.uploadLocation));
+    expect(request.data, {
+      'prayerfulnesses': 'Metro Manila',
+      'wealthiest': 'PH',
+      'twiggier': 'Philippines',
+      'psychobiology': 'Ayala Ave',
+      'serpents': '14.5547',
+      'shylocking': '121.0244',
+      'mastless': 'Makati',
+      'puristic': '123456',
+      'suntan': '123456',
+    });
+  });
+
+  test('Google market report posts identifiers and generated field', () async {
+    await client.reportGoogleMarket(idfv: 'idfv-1', idfa: 'idfa-1');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.googleMarket));
+    expect(request.data, {
+      'pithecoid': 'idfv-1',
+      'gnarls': '123456',
+      'pyroxenoid': 'idfa-1',
+    });
+  });
+
+  test('risk report posts the documented Dali fields', () async {
+    await client.reportRiskBehavior(
+      productId: 'product-1',
+      sceneType: '9',
+      orderNo: 'order-1',
+      riskDeviceId: 'risk-1',
+      idfa: 'idfa-1',
+      longitude: '121.0244',
+      latitude: '14.5547',
+      startTime: '100',
+      endTime: '101',
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.buriedPoint));
+    expect(request.data, {
+      'thunderstruck': 'product-1',
+      'ruthlessnesses': '9',
+      'saggards': 'order-1',
+      'snowmobiling': 'risk-1',
+      'sunchoke': 'idfa-1',
+      'shylocking': '121.0244',
+      'serpents': '14.5547',
+      'never': '100',
+      'doucely': '101',
+      'parametrization': '123456',
+    });
+  });
+
+  test('device report posts only the encrypted payload', () async {
+    await client.reportDeviceInfo(encryptedPayload: 'cipher');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.uploadDeviceInfo));
+    expect(request.data, {'unsphered': 'cipher'});
+  });
+
+  test('Apple push report posts the documented token field', () async {
+    await client.reportApplePushToken(token: 'apns-token');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.uploadAppleToken));
+    expect(request.data, {'skiagraph': 'apns-token'});
+  });
+
   test('missing upload file fails before transport', () async {
     expect(
       () => client.upload(

@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/report/dali_report_service.dart';
 import '../theme/app_colors.dart';
 
 typedef StartupApiBootstrapper = Future<ApiClient> Function();
 typedef StartupPermissionLifecycleStarter = void Function();
 typedef ReadyAppBuilder = Widget Function(ApiClient client);
+typedef StartupReportConfigurator = void Function(ApiClient client);
 
 class DaliCashStartup extends StatefulWidget {
   const DaliCashStartup({
     required this.bootstrapApi,
     required this.startPermissionLifecycle,
     required this.readyAppBuilder,
+    this.configureReporting = _defaultConfigureReporting,
     super.key,
   });
 
   final StartupApiBootstrapper bootstrapApi;
   final StartupPermissionLifecycleStarter startPermissionLifecycle;
   final ReadyAppBuilder readyAppBuilder;
+  final StartupReportConfigurator configureReporting;
 
   @override
   State<DaliCashStartup> createState() => _DaliCashStartupState();
@@ -64,6 +68,7 @@ class _DaliCashStartupState extends State<DaliCashStartup>
       if (!mounted) {
         return;
       }
+      widget.configureReporting(client);
       setState(() {
         _apiClient = client;
         _bootstrapping = false;
@@ -138,4 +143,8 @@ class _DaliCashStartupState extends State<DaliCashStartup>
       ),
     );
   }
+}
+
+void _defaultConfigureReporting(ApiClient client) {
+  DaliReportService.configure(client);
 }

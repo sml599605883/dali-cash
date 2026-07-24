@@ -6,12 +6,19 @@ import 'package:get/get.dart';
 import '../../../core/json/json.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/report/dali_report_service.dart';
 
 enum IdentitySelectionState { loading, ready, empty, error }
 
 typedef IdentitySelectionLogger = void Function(String message);
 typedef IdentityUploadNavigator =
     void Function(String productId, String cardType);
+typedef IdentitySelectionRiskReporter =
+    Future<void> Function({
+      required String productId,
+      required String sceneType,
+      required int startTimeSeconds,
+    });
 
 class IdentitySelectionController extends GetxController {
   IdentitySelectionController({
@@ -19,13 +26,19 @@ class IdentitySelectionController extends GetxController {
     required String productId,
     IdentitySelectionLogger? logger,
     this.openUpload,
+    int? startTimeSeconds,
+    IdentitySelectionRiskReporter? reportRiskScene,
   }) : productId = productId.trim(),
-       logger = logger ?? _defaultLogger;
+       logger = logger ?? _defaultLogger,
+       startTimeSeconds = startTimeSeconds ?? DaliReportService.nowSeconds(),
+       reportRiskScene = reportRiskScene ?? _defaultReportRiskScene;
 
   final ApiClient apiClient;
   final String productId;
   final IdentitySelectionLogger logger;
   final IdentityUploadNavigator? openUpload;
+  final int startTimeSeconds;
+  final IdentitySelectionRiskReporter reportRiskScene;
 
   IdentitySelectionState state = IdentitySelectionState.loading;
   List<String> recommendedTypes = const <String>[];
@@ -77,6 +90,13 @@ class IdentitySelectionController extends GetxController {
       return;
     }
     logger('identity selected: productId=$productId, type=$normalizedType');
+    unawaited(
+      reportRiskScene(
+        productId: productId,
+        sceneType: '2',
+        startTimeSeconds: startTimeSeconds,
+      ),
+    );
     openUpload?.call(productId, normalizedType);
   }
 
@@ -90,5 +110,17 @@ class IdentitySelectionController extends GetxController {
 
   static void _defaultLogger(String message) {
     log(message, name: 'IdentitySelection');
+  }
+
+  static Future<void> _defaultReportRiskScene({
+    required String productId,
+    required String sceneType,
+    required int startTimeSeconds,
+  }) {
+    return DaliReportService.current?.reportRisk(
+      productId: productId,
+      scene: sceneType,
+      startedAtSeconds: startTimeSeconds,
+    ) ?? Future<void>.value();
   }
 }

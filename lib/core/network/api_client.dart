@@ -149,6 +149,21 @@ class ApiClient {
     );
   }
 
+  Future<ApiResponse> getFaceIdToken({
+    required String orderNo,
+    String type = '0',
+  }) {
+    return post(
+      ApiEndpoints.getFaceIdToken,
+      data: {
+        'titled': orderNo,
+        'sociologeses': type,
+        'motormen': _randomDigits(6),
+        'snakeroots': _randomDigits(6),
+      },
+    );
+  }
+
   Future<ApiResponse> sendSmsCode({required String phone}) {
     return post(
       ApiEndpoints.sendSmsCode,
@@ -180,6 +195,80 @@ class ApiClient {
       ApiEndpoints.getDeviceName,
       data: {'crocidolites': deviceIdentifier, 'symbiotes': _randomDigits(6)},
     );
+  }
+
+  Future<ApiResponse> reportLocation({
+    String? province,
+    required String countryCode,
+    required String country,
+    required String street,
+    required String latitude,
+    required String longitude,
+    required String city,
+  }) {
+    return post(
+      ApiEndpoints.uploadLocation,
+      data: {
+        'prayerfulnesses': province,
+        'wealthiest': countryCode,
+        'twiggier': country,
+        'psychobiology': street,
+        'serpents': latitude,
+        'shylocking': longitude,
+        'mastless': city,
+        'puristic': _randomDigits(6),
+        'suntan': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> reportGoogleMarket({
+    required String idfv,
+    required String idfa,
+  }) {
+    return post(
+      ApiEndpoints.googleMarket,
+      data: {'pithecoid': idfv, 'gnarls': _randomDigits(6), 'pyroxenoid': idfa},
+    );
+  }
+
+  Future<ApiResponse> reportRiskBehavior({
+    required String productId,
+    required String sceneType,
+    required String orderNo,
+    required String riskDeviceId,
+    required String idfa,
+    required String longitude,
+    required String latitude,
+    required String startTime,
+    required String endTime,
+  }) {
+    return post(
+      ApiEndpoints.buriedPoint,
+      data: {
+        'thunderstruck': productId,
+        'ruthlessnesses': sceneType,
+        'saggards': orderNo,
+        'snowmobiling': riskDeviceId,
+        'sunchoke': idfa,
+        'shylocking': longitude,
+        'serpents': latitude,
+        'never': startTime,
+        'doucely': endTime,
+        'parametrization': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> reportDeviceInfo({required String encryptedPayload}) {
+    return post(
+      ApiEndpoints.uploadDeviceInfo,
+      data: {'unsphered': encryptedPayload},
+    );
+  }
+
+  Future<ApiResponse> reportApplePushToken({required String token}) {
+    return post(ApiEndpoints.uploadAppleToken, data: {'skiagraph': token});
   }
 
   Future<ApiResponse> get(

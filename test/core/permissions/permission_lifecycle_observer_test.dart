@@ -8,12 +8,20 @@ void main() {
   test('starts once and retries tracking only when the app resumes', () async {
     var startupRequests = 0;
     var resumeRequests = 0;
+    var reportStarts = 0;
+    var reportResumes = 0;
     final observer = PermissionLifecycleObserver(
       requestStartupPermissions: () async {
         startupRequests++;
       },
       requestResumeTrackingPermission: () async {
         resumeRequests++;
+      },
+      reportAppStarted: () async {
+        reportStarts++;
+      },
+      reportAppResumed: () async {
+        reportResumes++;
       },
     );
 
@@ -27,6 +35,8 @@ void main() {
 
     expect(startupRequests, 1);
     expect(resumeRequests, 1);
+    expect(reportStarts, 1);
+    expect(reportResumes, 1);
     WidgetsBinding.instance.removeObserver(observer);
   });
 }

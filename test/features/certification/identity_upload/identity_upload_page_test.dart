@@ -3,6 +3,7 @@ import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_response.dart';
+import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/features/certification/identity_confirmation/identity_confirmation_page.dart';
 import 'package:dali_cash/features/certification/identity_upload/identity_upload_page.dart';
 import 'package:dali_cash/features/certification/identity_upload/identity_upload_services.dart';
@@ -196,6 +197,7 @@ void main() {
           apiClient: client,
           imagePicker: _AlbumImagePicker(),
           imageCompressor: _PassThroughImageCompressor(),
+          nowSeconds: () => 100,
         ),
         getPages: [
           GetPage(
@@ -216,6 +218,7 @@ void main() {
     expect(find.text('0111-9695505-5'), findsOneWidget);
     expect(find.text('31-05-1995'), findsOneWidget);
     expect(client.lastCardType, 'PRC');
+    expect(await client.config.sessionStore.identitySceneStartTime(), 100);
   });
 }
 
@@ -244,7 +247,8 @@ Future<void> _pumpPermissionPage(
 }
 
 class _SuccessfulUploadApiClient extends ApiClient {
-  _SuccessfulUploadApiClient() : super(ApiConfig());
+  _SuccessfulUploadApiClient()
+    : super(ApiConfig(sessionStore: SessionStore.memory()));
 
   String? lastCardType;
 

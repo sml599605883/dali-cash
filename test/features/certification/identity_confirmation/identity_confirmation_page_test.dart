@@ -66,6 +66,8 @@ void main() {
     addTearDown(Get.reset);
     ScreenAdapter.initForSize(const Size(375, 812));
     final client = _IdentitySubmitApiClient();
+    await client.config.sessionStore.saveIdentitySceneStartTime(100);
+    final riskStarts = <int>[];
     Get.put<ApiClient>(client);
 
     await tester.pumpWidget(
@@ -80,6 +82,9 @@ void main() {
             'imputes': 'OLD-ID',
             'annealers': '1995/05/31',
           }),
+          reportRiskScene: (startTimeSeconds) async {
+            riskStarts.add(startTimeSeconds);
+          },
         ),
         getPages: [
           GetPage(
@@ -107,6 +112,7 @@ void main() {
     expect(client.cardType, 'PRC');
     expect(Get.currentRoute, AppRoutes.identityFace);
     expect(Get.arguments, {'highlands': 'product-42', 'cardType': 'PRC'});
+    expect(riskStarts, [100]);
   });
 
   testWidgets('shows cached hoddens copy from product detail', (tester) async {

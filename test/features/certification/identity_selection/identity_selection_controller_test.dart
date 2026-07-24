@@ -71,6 +71,35 @@ void main() {
 
     expect(logs, ['identity selected: productId=product-42, type=PRC']);
   });
+
+  test('selection completes risk scene 2 with entry time', () async {
+    final reports = <Map<String, Object?>>[];
+    final controller = IdentitySelectionController(
+      apiClient: apiClient,
+      productId: 'product-42',
+      logger: logs.add,
+      startTimeSeconds: 100,
+      reportRiskScene:
+          ({
+            required productId,
+            required sceneType,
+            required startTimeSeconds,
+          }) async {
+            reports.add({
+              'productId': productId,
+              'sceneType': sceneType,
+              'startTimeSeconds': startTimeSeconds,
+            });
+          },
+    );
+
+    controller.selectType('PRC');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(reports, [
+      {'productId': 'product-42', 'sceneType': '2', 'startTimeSeconds': 100},
+    ]);
+  });
 }
 
 class _FakeApiClient extends ApiClient {

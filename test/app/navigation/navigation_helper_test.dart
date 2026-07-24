@@ -332,6 +332,12 @@ void main() {
     expect(feedbackEvents, ['loading', 'dismiss']);
   });
 
+  test('continues certification by reloading product detail', () async {
+    await NavigationHelper.continueProductDetailFlow(' product-42 ');
+
+    expect(apiClient.detailedProducts, ['product-42']);
+  });
+
   testWidgets('successful apply handles normalized product detail internally', (
     tester,
   ) async {
@@ -342,7 +348,7 @@ void main() {
       message: '',
       states: Json({
         'tucking': 200,
-        'shoepac': {'underfeeding': 'product-42'},
+        'shoepac': {'underfeeding': 'product-42', 'saggards': 'ORDER-42'},
         'spirochaete': {
           'entrecote': 'LancerPredacities',
           'enterostomy': 'Identifying information',
@@ -374,6 +380,7 @@ void main() {
       apiClient.config.sessionStore.productDetailFacePrompt(),
       'Face prompt',
     );
+    expect(apiClient.config.sessionStore.productDetailOrderNo(), 'ORDER-42');
     expect(navigationLogs, isEmpty);
     expect(feedbackEvents, ['loading', 'dismiss']);
   });

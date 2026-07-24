@@ -24,7 +24,7 @@ class DaliProductNavigationFlow {
   });
 
   final ApiClient apiClient;
-  final void Function() openLogin;
+  final void Function(String productId) openLogin;
   final DaliAsyncAction showLoading;
   final DaliAsyncAction dismissLoading;
   final DaliMessageAction showError;
@@ -43,7 +43,7 @@ class DaliProductNavigationFlow {
     try {
       final sessionId = await apiClient.config.sessionStore.sessionId();
       if (sessionId.trim().isEmpty) {
-        openLogin();
+        openLogin(normalizedProductId);
         return;
       }
     } catch (error) {
@@ -96,6 +96,9 @@ class DaliProductNavigationFlow {
         );
     await apiClient.config.sessionStore.saveProductDetailFacePrompt(
       detail.pageCopy.faceVerification,
+    );
+    await apiClient.config.sessionStore.saveProductDetailOrderNo(
+      detail.product.orderNo,
     );
     await handleProductDetail(detail);
   }

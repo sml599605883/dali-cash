@@ -13,6 +13,7 @@ void main() {
     final completer = Completer<ApiClient>();
     var bootstrapCalls = 0;
     var permissionStarts = 0;
+    ApiClient? configuredClient;
 
     await tester.pumpWidget(
       DaliCashStartup(
@@ -21,6 +22,7 @@ void main() {
           return completer.future;
         },
         startPermissionLifecycle: () => permissionStarts++,
+        configureReporting: (client) => configuredClient = client,
         readyAppBuilder: (_) => const SizedBox(key: Key('startup-ready-app')),
       ),
     );
@@ -35,6 +37,7 @@ void main() {
 
     expect(find.byKey(const Key('startup-ready-app')), findsOneWidget);
     expect(permissionStarts, 1);
+    expect(configuredClient, isNotNull);
   });
 
   testWidgets('keeps startup blocked and retries after network failure', (
@@ -42,6 +45,7 @@ void main() {
   ) async {
     var bootstrapCalls = 0;
     var permissionStarts = 0;
+    var reportConfigurations = 0;
 
     await tester.pumpWidget(
       DaliCashStartup(
@@ -53,6 +57,7 @@ void main() {
           return ApiClient(ApiConfig());
         },
         startPermissionLifecycle: () => permissionStarts++,
+        configureReporting: (_) => reportConfigurations++,
         readyAppBuilder: (_) => const SizedBox(key: Key('startup-ready-app')),
       ),
     );
@@ -69,5 +74,6 @@ void main() {
     expect(bootstrapCalls, 2);
     expect(find.byKey(const Key('startup-ready-app')), findsOneWidget);
     expect(permissionStarts, 1);
+    expect(reportConfigurations, 1);
   });
 }

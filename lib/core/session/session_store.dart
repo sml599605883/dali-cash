@@ -13,12 +13,15 @@ class SessionStore {
   static const productDetailIdentityConfirmationPromptKey =
       'product_detail.identity_confirmation_prompt';
   static const productDetailFacePromptKey = 'product_detail.face_prompt';
+  static const productDetailOrderNoKey = 'product_detail.order_no';
+  static const identitySceneStartTimeKey = 'report.identity_scene_start';
 
   final SharedPreferencesAsync? _preferences;
   final Map<String, Object?>? _memory;
   String _productDetailPrompt = '';
   String _productDetailIdentityConfirmationPrompt = '';
   String _productDetailFacePrompt = '';
+  String _productDetailOrderNo = '';
 
   Future<String> sessionId() => _string(sessionIdKey);
 
@@ -57,6 +60,18 @@ class SessionStore {
     await _setString(productDetailFacePromptKey, _productDetailFacePrompt);
   }
 
+  String productDetailOrderNo() => _productDetailOrderNo;
+
+  Future<void> saveProductDetailOrderNo(String value) async {
+    _productDetailOrderNo = value.trim();
+    await _setString(productDetailOrderNoKey, _productDetailOrderNo);
+  }
+
+  Future<int> identitySceneStartTime() => _int(identitySceneStartTimeKey);
+
+  Future<void> saveIdentitySceneStartTime(int value) =>
+      _setInt(identitySceneStartTimeKey, value);
+
   Future<void> saveDeviceInfo({
     required String deviceName,
     required String physicalSize,
@@ -74,10 +89,13 @@ class SessionStore {
         ..remove(physicalSizeKey)
         ..remove(productDetailPromptKey)
         ..remove(productDetailIdentityConfirmationPromptKey)
-        ..remove(productDetailFacePromptKey);
+        ..remove(productDetailFacePromptKey)
+        ..remove(productDetailOrderNoKey);
       _productDetailPrompt = '';
       _productDetailIdentityConfirmationPrompt = '';
       _productDetailFacePrompt = '';
+      _productDetailOrderNo = '';
+      memory.remove(identitySceneStartTimeKey);
       return;
     }
     await _preferences!.remove(sessionIdKey);
@@ -86,9 +104,12 @@ class SessionStore {
     await _preferences.remove(productDetailPromptKey);
     await _preferences.remove(productDetailIdentityConfirmationPromptKey);
     await _preferences.remove(productDetailFacePromptKey);
+    await _preferences.remove(productDetailOrderNoKey);
+    await _preferences.remove(identitySceneStartTimeKey);
     _productDetailPrompt = '';
     _productDetailIdentityConfirmationPrompt = '';
     _productDetailFacePrompt = '';
+    _productDetailOrderNo = '';
   }
 
   Future<String> _string(String key) async {
@@ -106,5 +127,20 @@ class SessionStore {
       return;
     }
     await _preferences!.setString(key, value);
+  }
+
+  Future<int> _int(String key) async {
+    final memory = _memory;
+    if (memory != null) return memory[key] as int? ?? 0;
+    return await _preferences!.getInt(key) ?? 0;
+  }
+
+  Future<void> _setInt(String key, int value) async {
+    final memory = _memory;
+    if (memory != null) {
+      memory[key] = value;
+      return;
+    }
+    await _preferences!.setInt(key, value);
   }
 }

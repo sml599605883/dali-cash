@@ -13,11 +13,14 @@ import '../../../app/theme/app_colors.dart';
 import '../../../core/json/json.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/report/dali_report_service.dart';
 import '../widgets/identity_prompt_banner.dart';
 import 'identity_birthday_picker.dart';
 import 'identity_recognition_result.dart';
 
 typedef IdentityConfirmationLogger = void Function(String message);
+typedef IdentityConfirmationRiskReporter =
+    Future<void> Function(int startTimeSeconds);
 
 class IdentityConfirmationPage extends StatefulWidget {
   static const defaultPromptMessage =
@@ -30,6 +33,7 @@ class IdentityConfirmationPage extends StatefulWidget {
     this.recognizedInfo,
     this.logger,
     this.apiClient,
+    this.reportRiskScene,
   });
 
   final String productId;
@@ -37,6 +41,7 @@ class IdentityConfirmationPage extends StatefulWidget {
   final IdentityRecognitionResult? recognizedInfo;
   final IdentityConfirmationLogger? logger;
   final ApiClient? apiClient;
+  final IdentityConfirmationRiskReporter? reportRiskScene;
 
   @override
   State<IdentityConfirmationPage> createState() =>
@@ -209,6 +214,11 @@ class _IdentityConfirmationPageState extends State<IdentityConfirmationPage> {
         sociologeses: '11',
         rapscallion: _cardType(),
       );
+      final startTime = await client.config.sessionStore
+          .identitySceneStartTime();
+      if (startTime > 0) {
+        unawaited((widget.reportRiskScene ?? _reportIdentityRisk)(startTime));
+      }
       await EasyLoading.dismiss();
       if (!mounted) return;
       (widget.logger ?? IdentityConfirmationPage.defaultLogger)(
@@ -226,6 +236,14 @@ class _IdentityConfirmationPageState extends State<IdentityConfirmationPage> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _reportIdentityRisk(int startTimeSeconds) {
+    return DaliReportService.current?.reportRisk(
+      productId: _productId(),
+      scene: '3',
+      startedAtSeconds: startTimeSeconds,
+    ) ?? Future<void>.value();
   }
 }
 

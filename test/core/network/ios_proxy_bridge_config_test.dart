@@ -73,4 +73,19 @@ void main() {
     expect(registrar, contains('params["allowed"] = true'));
     expect(registrar, contains('initWithOptions(params)'));
   });
+
+  test('iOS exposes TrustDecision liveness through the client bridge', () {
+    final registrar = File(
+      'ios/Runner/ClientBridgeRegistrar.swift',
+    ).readAsStringSync();
+
+    expect(registrar, contains('case "showTrustDecisionLiveness"'));
+    expect(registrar, contains('showLivenessWithShowStyle'));
+    expect(registrar, contains('TDLivenessShowStylePresent'));
+    expect(registrar, contains('"success"'));
+    expect(registrar, contains('"image"'));
+    expect(registrar, contains('"sequence_id"'));
+    expect(registrar, contains('"liveness_id"'));
+    expect(registrar, contains('"raw"'));
+  });
 }

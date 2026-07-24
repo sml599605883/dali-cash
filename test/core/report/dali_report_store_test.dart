@@ -1,0 +1,29 @@
+import 'package:dali_cash/core/report/dali_report_data.dart';
+import 'package:dali_cash/core/report/dali_report_store.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('stores only state needed by Dali reports', () async {
+    final store = DaliReportStore.memory();
+    const location = DaliLocationSnapshot(
+      latitude: '14.5547',
+      longitude: '121.0244',
+      city: 'Makati',
+    );
+
+    await store.saveLoginAt(1234);
+    await store.saveLocation(location);
+    await store.markAdjustInitialized();
+
+    expect(await store.loginAt(), 1234);
+    expect((await store.cachedLocation())?.city, 'Makati');
+    expect(await store.isAdjustInitialized(), isTrue);
+  });
+
+  test('does not restore an invalid cached location', () async {
+    final store = DaliReportStore.memory();
+    await store.saveLocation(DaliLocationSnapshot.empty);
+
+    expect(await store.cachedLocation(), isNull);
+  });
+}

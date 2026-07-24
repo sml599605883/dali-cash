@@ -15,6 +15,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../core/json/json.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/report/dali_report_service.dart';
 import '../widgets/identity_prompt_banner.dart';
 import '../widgets/identity_upload_method_sheet.dart';
 import 'identity_upload_services.dart';
@@ -39,6 +40,7 @@ class IdentityUploadPage extends StatefulWidget {
     this.apiClient,
     this.imagePicker,
     this.imageCompressor,
+    this.nowSeconds = DaliReportService.nowSeconds,
   });
 
   final String productId;
@@ -51,6 +53,7 @@ class IdentityUploadPage extends StatefulWidget {
   final ApiClient? apiClient;
   final IdentityUploadImagePicker? imagePicker;
   final IdentityUploadImageCompressor? imageCompressor;
+  final int Function() nowSeconds;
 
   @override
   State<IdentityUploadPage> createState() => _IdentityUploadPageState();
@@ -176,6 +179,14 @@ class _IdentityUploadPageState extends State<IdentityUploadPage> {
       ),
     );
     if (selectedMethod == null || !mounted) return;
+    final client =
+        widget.apiClient ??
+        (Get.isRegistered<ApiClient>() ? Get.find<ApiClient>() : null);
+    if (client != null) {
+      await client.config.sessionStore.saveIdentitySceneStartTime(
+        widget.nowSeconds(),
+      );
+    }
     if (selectedMethod == IdentityUploadMethod.camera &&
         !await widget.requestCameraPermission()) {
       if (mounted) await _showCameraPermissionDialog();

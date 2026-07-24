@@ -65,6 +65,144 @@ void main() {
     expect(settings.canApply, isFalse);
   });
 
+  test('parses TrustDecision liveness result', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'showTrustDecisionLiveness');
+          expect(call.arguments, 'td-license');
+          return <String, Object?>{
+            'success': true,
+            'code': 0,
+            'message': 'success',
+            'image': 'base64-image',
+            'sequence_id': 'sequence-42',
+            'liveness_id': 'liveness-42',
+            'raw': <String, Object?>{'source': 'native'},
+          };
+        });
+
+    final result = await ClientBridge(
+      platform: ClientPlatform.ios,
+    ).showTrustDecisionLiveness('td-license');
+
+    expect(result.success, isTrue);
+    expect(result.code, 0);
+    expect(result.message, 'success');
+    expect(result.image, 'base64-image');
+    expect(result.sequenceId, 'sequence-42');
+    expect(result.livenessId, 'liveness-42');
+    expect(result.raw['source'], 'native');
+  });
+
+  test('converts TrustDecision platform failures to failed results', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async {
+          throw PlatformException(
+            code: 'liveness_failed',
+            message: 'Camera unavailable',
+          );
+        });
+
+    final result = await ClientBridge(
+      platform: ClientPlatform.ios,
+    ).showTrustDecisionLiveness('td-license');
+
+    expect(result.success, isFalse);
+    expect(result.message, 'Camera unavailable');
+    expect(result.raw['code'], 'liveness_failed');
+  });
+
+  test('reports unavailable TrustDecision bridge', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async {
+          throw MissingPluginException();
+        });
+
+    final result = await ClientBridge(
+      platform: ClientPlatform.ios,
+    ).showTrustDecisionLiveness('td-license');
+
+    expect(result.success, isFalse);
+    expect(result.message, 'Liveness verification is unavailable.');
+  });
+
+  test('does not invoke TrustDecision bridge outside iOS', () async {
+    final result = await ClientBridge(
+      platform: ClientPlatform.android,
+    ).showTrustDecisionLiveness('td-license');
+
+    expect(result.success, isFalse);
+    expect(result.message, contains('only available on iOS'));
+  });
+
+  test('parses report location and device snapshot', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'getReportLocation') {
+            return <String, Object?>{
+              'latitude': '14.5',
+              'longitude': '121.0',
+              'city': 'Makati',
+            };
+          }
+          expect(call.method, 'getReportDeviceSnapshot');
+          return <String, Object?>{
+            'idfv': 'idfv-1',
+            'idfa': 'idfa-1',
+            'riskDeviceId': 'risk-1',
+            'batteryLevel': 80,
+          };
+        });
+    final bridge = ClientBridge(platform: ClientPlatform.ios);
+
+    final location = await bridge.getReportLocation();
+    final snapshot = await bridge.getReportDeviceSnapshot();
+
+    expect(location?.city, 'Makati');
+    expect(snapshot.idfv, 'idfv-1');
+    expect(snapshot.batteryLevel, 80);
+  });
+
+  test(
+    'gets push token and tracking status and initializes attribution',
+    () async {
+      final calls = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call.method);
+            switch (call.method) {
+              case 'getPushToken':
+                return 'push-token';
+              case 'getTrackingStatus':
+                return 'authorized';
+              case 'initializeAdjust':
+                expect(call.arguments, {'token': 'adjust-token'});
+                return null;
+            }
+            return null;
+          });
+      final bridge = ClientBridge(platform: ClientPlatform.ios);
+
+      expect(await bridge.getPushToken(), 'push-token');
+      expect(await bridge.getTrackingStatus(), 'authorized');
+      await bridge.initializeAdjust('adjust-token');
+      expect(calls, ['getPushToken', 'getTrackingStatus', 'initializeAdjust']);
+    },
+  );
+
+  test('report bridge failures return safe empty values', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async {
+          throw MissingPluginException();
+        });
+    final bridge = ClientBridge(platform: ClientPlatform.ios);
+
+    expect(await bridge.getReportLocation(), isNull);
+    expect((await bridge.getReportDeviceSnapshot()).idfv, isEmpty);
+    expect(await bridge.getPushToken(), isEmpty);
+    expect(await bridge.getTrackingStatus(), isEmpty);
+  });
+
   test('does not invoke iOS bridge on unsupported platforms', () {
     final bridge = ClientBridge(platform: ClientPlatform.android);
 
