@@ -12,7 +12,7 @@ The implementation covers:
 
 - An in-app WebView page with loading, failure, retry, dynamic title, navigation interception, and history-aware back behavior.
 - The `ph_dali_cash_ios` JavaScript handler and all nine documented Dali H5 actions.
-- Dali API wrappers required by retry-order and account-change actions.
+- Dali API wrappers required by retry-order, account-change, and confirm-page retention actions.
 - iOS StoreKit review requests through the existing Dali native client bridge boundary.
 - HTTP/HTTPS raw-target navigation into the new WebView page.
 - Focused unit and widget tests for parsing, dispatch, routing, API payloads, lifecycle behavior, and callback delivery.
@@ -22,7 +22,6 @@ The implementation excludes:
 - Android app-rating behavior.
 - An Android Google Play handoff from the iOS bridge.
 - A new account-list selection page.
-- Kaibigan Loan's project-specific WebView back-retention behavior.
 
 ## Architecture
 
@@ -115,9 +114,25 @@ The page uses `flutter_inappwebview` and follows current Dali theme constants ra
 - Loading starts on navigation and stops on successful load or error.
 - Main-frame load failures show an error state with retry; subresource failures do not replace the whole page.
 - The title starts from the provided title or a neutral default, then follows non-empty document titles.
-- Back first uses WebView history and closes the page only when no history exists.
+- Back first applies the Dali confirm-page retention rule described below. When no popup is shown or the user confirms exit, it uses WebView history first and closes the page only when no history exists.
 - Web content permission requests are denied by default because no H5 permission contract was provided.
 - Mixed content remains disabled.
+
+### Confirm-Page Back Retention
+
+Dali's documented Scheme map defines `confirmUrl` as `/#/Florescences`. Before performing the normal WebView back action, the page parses the current URL and checks the fragment route for the exact `Florescences` segment. It does not use Kaibigan Loan's `Jalaps` marker or infer the route from unrelated H5 URLs.
+
+The product ID is read from `thunderstruck` in the outer query or fragment query. When both the confirm route and product ID are present, the page shows loading and calls `POST /lutes/weldor` with:
+
+```text
+omegas=5
+thunderstruck=<product ID>
+jawlines=<Dali-generated noise value>
+```
+
+The popup reads `unsphered.rheologists`: `millipede` is the background image, `undauntable` is the exit label, and `toilfully` is the continue label. Continue dismisses the popup and remains on the current H5 page. Exit dismisses the popup and then performs the original default back action: WebView history when available, otherwise closing the WebView route.
+
+If the URL does not match, the product ID is missing, the request fails, or the server omits the popup image, the page logs the reason and performs the default back action. A retention failure must never trap the user on the page or leave loading visible.
 
 ## Error Handling
 
@@ -150,6 +165,7 @@ Implementation follows test-driven development. Coverage must include:
 - Exact Dali API paths, request fields, and redirect response fields.
 - iOS-only native app-review method wiring and StoreKit foreground-scene behavior.
 - WebView loading, retry, title, navigation interception, lifecycle handler registration, and history-aware back behavior.
+- Exact `Florescences` detection, outer/fragment `thunderstruck` extraction, retention type `5` payload, server popup fields, Continue/Exit behavior, and failure fallback.
 - Existing navigation and product-detail tests remain green.
 
 Final validation is focused tests first, then `flutter test --concurrency=1`, `flutter analyze`, and `git diff --check`.
@@ -160,6 +176,7 @@ Final validation is focused tests first, then `flutter test --concurrency=1`, `f
 - Dali field names and API contracts match the supplied H5 contract and Dali API documentation.
 - App rating invokes StoreKit only through the iOS native bridge.
 - Existing-account change logs the missing account-list page instead of fabricating navigation or selection.
+- Back from `/#/Florescences` presents Dali's type `5` retention popup before WebView history or route exit.
 - HTTP/HTTPS targets no longer stop at the current deferred WebView log.
 - Errors, empty values, lifecycle changes, and canceled page flows do not crash or leave loading visible.
-- The design uses Dali-owned module boundaries and does not copy Kaibigan-specific route names, fields, or retention behavior.
+- The design uses Dali-owned module boundaries and does not copy Kaibigan-specific route names or fields.
