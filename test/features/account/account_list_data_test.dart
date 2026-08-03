@@ -138,6 +138,39 @@ void main() {
       expect(account.isUnderMaintenance, isFalse);
     });
 
+    test('treats only exact numeric zero statuses as maintenance', () {
+      final expectations = <dynamic, bool>{
+        0: true,
+        '0': true,
+        '0.0': true,
+        false: false,
+        0.5: false,
+        -0.5: false,
+        1: false,
+      };
+
+      for (final entry in expectations.entries) {
+        final account = parseAccountSections(
+          Json({
+            'clingiest': [
+              {
+                'pater': 'Bank',
+                'jambes': [
+                  {'hoover': 'bind-1', 'precolonial': entry.key},
+                ],
+              },
+            ],
+          }),
+        ).single.accounts.single;
+
+        expect(
+          account.isUnderMaintenance,
+          entry.value,
+          reason: 'status: ${entry.key}',
+        );
+      }
+    });
+
     test('returns unmodifiable section and account lists', () {
       final sections = parseAccountSections(
         Json({

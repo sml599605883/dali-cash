@@ -68,7 +68,7 @@ List<AccountListSection> parseAccountSections(Json states) {
           middleName: option['monerans'].stringValue.trim(),
           lastName: option['sloid'].stringValue.trim(),
           isMain: accountJson['exploitable'].boolValue,
-          isUnderMaintenance: accountJson['precolonial'].intOrNull == 0,
+          isUnderMaintenance: _isExactZero(accountJson['precolonial']),
         ),
       );
     }
@@ -88,4 +88,18 @@ List<AccountListSection> parseAccountSections(Json states) {
   }
 
   return List.unmodifiable(sections);
+}
+
+bool _isExactZero(Json json) {
+  final value = json.value;
+  if (value is bool) {
+    return false;
+  }
+  if (value is num) {
+    return value == 0;
+  }
+  if (value is String) {
+    return num.tryParse(value.trim()) == 0;
+  }
+  return false;
 }
