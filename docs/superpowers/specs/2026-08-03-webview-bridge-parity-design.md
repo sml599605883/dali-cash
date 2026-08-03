@@ -90,7 +90,7 @@ StoreKit decides whether a prompt is displayed; a successful native method invoc
 saggards=<order number>
 ```
 
-The redirect URL is read from `unsphered.misericorde`. A non-empty result replaces the current WebView URL, or reloads when it matches the current URL. Loading is dismissed in all outcomes. API and missing-URL failures use the shared error presentation and return a structured failure.
+The redirect URL is read from `unsphered.misericorde`. A non-empty result follows Dali's approved replacement behavior: the navigation helper removes one old WebView route and creates a new WebView route for the redirect URL. It must not call `reload()` or `loadUrl()` on the original controller, even when the returned URL matches the current URL. Loading is dismissed in all outcomes. API and missing-URL failures use the shared error presentation and return a structured failure.
 
 ### Change Account
 
@@ -142,7 +142,8 @@ Implementation follows test-driven development. Coverage must include:
 - String/object envelope parsing and malformed input.
 - Callback JavaScript shape and callback omission for fire-and-forget actions.
 - Risk scene `10`, signed public parameters, URL classification, close, Home, and log-only Google Play behavior.
-- Retry loading/error lifecycle and current-controller reload/load behavior.
+- Retry loading/error lifecycle and WebView route-replacement behavior.
+- Retry replacement removes exactly one old WebView and creates a new WebView; Back must not reveal the obsolete H5 page.
 - Account-list empty/existing/canceled outcomes and log-only missing-page behavior.
 - Bind-card normal mode remains unchanged, while account-change mode submits the new binding ID and replaces the old account-change stack with a new WebView.
 - Account-change replacement removes the bind-card route and exactly one old WebView; Back must not reveal the obsolete H5 page.
