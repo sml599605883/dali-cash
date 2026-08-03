@@ -96,11 +96,11 @@ The redirect URL is read from `unsphered.misericorde`. A non-empty result replac
 
 `dali_cash_dzaSV8NeJkdm0di` reads `thunderstruck` and `saggards`, then calls `POST /lutes/preslaughter` with the documented product ID and Dali-generated noise fields.
 
-- When `unsphered.clingiest` is empty, the existing Dali bind-card page opens in an explicit account-change mode with product and order context. A successful bind reads the new binding ID from `unsphered.hoover`, calls `/lutes/creasing`, and returns its redirect URL to the waiting WebView action. Normal certification-mode bind-card behavior remains unchanged.
+- When `unsphered.clingiest` is empty, the existing Dali bind-card page opens in an explicit account-change mode with product and order context. A successful bind reads the new binding ID from `unsphered.hoover`, calls `/lutes/creasing`, and replaces the account-change route stack with a newly created WebView for the redirect URL. Normal certification-mode bind-card behavior remains unchanged.
 - When accounts exist, Dali currently has no account-list selection page. The action records a diagnostic log and returns a canceled/unavailable failure. It must not select an account or call the change endpoint without user input.
 - The existing `/lutes/creasing` wrapper is still added for the future account-list flow. It sends `titled` as the order number and `hoover` as the selected binding ID, then reads `unsphered.misericorde` as the redirect URL.
 
-When the account-change bind-card flow returns a redirect URL, the active WebView loads or reloads that URL. A canceled bind-card flow leaves the current WebView unchanged.
+Account-change success does not load the redirect URL into the original WebView controller. The navigation helper removes the bind-card route and one old WebView route, then creates a new WebView route for the redirect URL. This matches Kaibigan Loan's observable route behavior and prevents Back from returning to the obsolete H5 state. A canceled bind-card flow returns to the original WebView unchanged.
 
 ### Public Parameters
 
@@ -144,7 +144,8 @@ Implementation follows test-driven development. Coverage must include:
 - Risk scene `10`, signed public parameters, URL classification, close, Home, and log-only Google Play behavior.
 - Retry loading/error lifecycle and current-controller reload/load behavior.
 - Account-list empty/existing/canceled outcomes and log-only missing-page behavior.
-- Bind-card normal mode remains unchanged, while account-change mode submits the new binding ID and returns the change result URL.
+- Bind-card normal mode remains unchanged, while account-change mode submits the new binding ID and replaces the old account-change stack with a new WebView.
+- Account-change replacement removes the bind-card route and exactly one old WebView; Back must not reveal the obsolete H5 page.
 - Exact Dali API paths, request fields, and redirect response fields.
 - iOS-only native app-review method wiring and StoreKit foreground-scene behavior.
 - WebView loading, retry, title, navigation interception, lifecycle handler registration, and history-aware back behavior.
