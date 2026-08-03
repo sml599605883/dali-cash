@@ -10,6 +10,25 @@ abstract final class AppAssets {
       'assets/certification/identity_upload_demo.png';
   static const identityFaceVerificationDemo =
       'assets/certification/identity_face_verification_demo.png';
+  static const personalInformationProgress =
+      'assets/certification/personal_information_progress.png';
+  static const workInformationProgress =
+      'assets/certification/work_information_progress.png';
+  static const emergencyContactProgress =
+      'assets/certification/emergency_contact_progress.png';
+  static const bindCardProgress = 'assets/certification/bind_card_progress.png';
+  static const bindCardSuggestionClose =
+      'assets/certification/bind_card_suggestion_close.png';
+  static const emergencyContactPicker =
+      'assets/certification/emergency_contact_picker.png';
+  static const certificationOptionSelected =
+      'assets/certification/certification_option_selected.png';
+  static const addressPickerClose =
+      'assets/certification/address_picker/address_picker_close.png';
+  static const addressPickerChevron =
+      'assets/certification/address_picker/address_picker_chevron.png';
+  static const addressPickerOptionsBackground =
+      'assets/certification/address_picker/address_picker_options_background.png';
 
   static const loginBackground = 'assets/login/login_background.png';
   static const loginBanner = 'assets/login/login_banner.png';

@@ -416,40 +416,85 @@ void main() {
     expect(navigationLogs, isEmpty);
   });
 
-  test(
-    'recognizes product detail steps whose pages are not available',
-    () async {
-      const pendingSteps = <String, String>{
-        'PermafrostsPalfreys': 'personal',
-        'DeviouslyTressours': 'work',
-        'TrotlineScootches': 'ext',
-        'MolehillSubconscious': 'bank',
-      };
+  testWidgets('product detail personal step opens personal information', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    apiClient.detailResponse = ApiResponse(
+      code: 0,
+      message: '',
+      states: Json({
+        'shoepac': {'underfeeding': 'product-personal'},
+        'spirochaete': {
+          'entrecote': 'PermafrostsPalfreys',
+          'enterostomy': 'Personal information',
+        },
+      }),
+    );
 
-      for (final entry in pendingSteps.entries) {
-        apiClient.detailResponse = ApiResponse(
-          code: 0,
-          message: '',
-          states: Json({
-            'shoepac': {'underfeeding': 'product-42'},
-            'spirochaete': {
-              'entrecote': entry.key,
-              'enterostomy': 'Pending certification',
-            },
-          }),
-        );
+    await NavigationHelper.navigateRawTarget(
+      'ph://dali-cash/ios/Conifer?highlands=product-personal',
+    );
+    await tester.pumpAndSettle();
 
-        await NavigationHelper.navigateRawTarget(
-          'ph://dali-cash/ios/Conifer?highlands=product-42',
-        );
+    expect(Get.currentRoute, AppRoutes.personalInformation);
+    expect(Get.arguments, {'highlands': 'product-personal'});
+    expect(find.byKey(const Key('personalInformationStub')), findsOneWidget);
+    expect(navigationLogs, isEmpty);
+  });
 
-        expect(navigationLogs, hasLength(1));
-        expect(navigationLogs.single, contains('step=${entry.value}'));
-        expect(navigationLogs.single, contains('page not available'));
-        navigationLogs.clear();
-      }
+  testWidgets(
+    'routes the work-information product detail step with product id',
+    (tester) async {
+      await _pumpRoutes(tester);
+      apiClient.detailResponse = ApiResponse(
+        code: 0,
+        message: '',
+        states: Json({
+          'shoepac': {'underfeeding': 'product-work'},
+          'spirochaete': {
+            'entrecote': 'DeviouslyTressours',
+            'enterostomy': 'Work information',
+          },
+        }),
+      );
+
+      await NavigationHelper.navigateRawTarget(
+        'ph://dali-cash/ios/Conifer?highlands=product-work',
+      );
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.workInformation);
+      expect(Get.arguments, {'highlands': 'product-work'});
+      expect(find.byKey(const Key('workInformationStub')), findsOneWidget);
+      expect(navigationLogs, isEmpty);
     },
   );
+
+  testWidgets('bank step opens bind-card certification', (tester) async {
+    await _pumpRoutes(tester);
+    apiClient.detailResponse = ApiResponse(
+      code: 0,
+      message: '',
+      states: Json({
+        'shoepac': {'underfeeding': 'product-bind'},
+        'spirochaete': {
+          'entrecote': 'MolehillSubconscious',
+          'enterostomy': 'Account management',
+        },
+      }),
+    );
+
+    await NavigationHelper.navigateRawTarget(
+      'ph://dali-cash/ios/Conifer?highlands=product-bind',
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.bindCard);
+    expect(Get.arguments, {'highlands': 'product-bind'});
+    expect(find.byKey(const Key('bindCardStub')), findsOneWidget);
+    expect(navigationLogs, isEmpty);
+  });
 
   test('non-successful admission does not request product detail', () async {
     await apiClient.config.sessionStore.saveSessionId('session-id');
@@ -511,6 +556,23 @@ Future<void> _pumpRoutes(WidgetTester tester) {
           name: AppRoutes.identityFace,
           page: () =>
               const Scaffold(body: Text('Face', key: Key('identityFaceStub'))),
+        ),
+        GetPage(
+          name: AppRoutes.personalInformation,
+          page: () => const Scaffold(
+            body: Text('Personal', key: Key('personalInformationStub')),
+          ),
+        ),
+        GetPage(
+          name: AppRoutes.workInformation,
+          page: () => const Scaffold(
+            body: Text('Work', key: Key('workInformationStub')),
+          ),
+        ),
+        GetPage(
+          name: AppRoutes.bindCard,
+          page: () =>
+              const Scaffold(body: Text('Bind card', key: Key('bindCardStub'))),
         ),
       ],
     ),

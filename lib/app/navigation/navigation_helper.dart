@@ -131,6 +131,10 @@ abstract final class NavigationHelper {
       AppRoutes.login => toLogin<T>(),
       AppRoutes.identitySelection => toIdentitySelection<T>(),
       AppRoutes.identityFace => toIdentityFace<T>(),
+      AppRoutes.personalInformation => toPersonalInformation<T>(),
+      AppRoutes.workInformation => toWorkInformation<T>(),
+      AppRoutes.emergencyContact => toEmergencyContact<T>(),
+      AppRoutes.bindCard => toBindCard<T>(),
       _ => null,
     };
   }
@@ -166,6 +170,52 @@ abstract final class NavigationHelper {
     }
     Get.toNamed<T>(
       AppRoutes.identityFace,
+      arguments: {'highlands': productId.trim()},
+    );
+    return Future<T?>.value();
+  }
+
+  static Future<T?>? toPersonalInformation<T extends Object?>({
+    String productId = '',
+  }) {
+    if (Get.currentRoute == AppRoutes.personalInformation) {
+      return null;
+    }
+    Get.toNamed<T>(
+      AppRoutes.personalInformation,
+      arguments: {'highlands': productId.trim()},
+    );
+    return Future<T?>.value();
+  }
+
+  static Future<T?>? toWorkInformation<T extends Object?>({
+    String productId = '',
+  }) {
+    if (Get.currentRoute == AppRoutes.workInformation) {
+      return null;
+    }
+    Get.toNamed<T>(
+      AppRoutes.workInformation,
+      arguments: {'highlands': productId.trim()},
+    );
+    return Future<T?>.value();
+  }
+
+  static Future<T?>? toEmergencyContact<T extends Object?>({
+    String productId = '',
+  }) {
+    if (Get.currentRoute == AppRoutes.emergencyContact) return null;
+    Get.toNamed<T>(
+      AppRoutes.emergencyContact,
+      arguments: {'highlands': productId.trim()},
+    );
+    return Future<T?>.value();
+  }
+
+  static Future<T?>? toBindCard<T extends Object?>({String productId = ''}) {
+    if (Get.currentRoute == AppRoutes.bindCard) return null;
+    Get.toNamed<T>(
+      AppRoutes.bindCard,
       arguments: {'highlands': productId.trim()},
     );
     return Future<T?>.value();
@@ -302,15 +352,29 @@ abstract final class NavigationHelper {
     }
 
     final productId = detail.product.productId.trim();
-    if (step == 'identity' || step == 'face') {
+    if (step == 'identity' ||
+        step == 'face' ||
+        step == 'personal' ||
+        step == 'work' ||
+        step == 'ext' ||
+        step == 'bank') {
       if (productId.isEmpty) {
         logger('product detail $step target is missing highlands');
         return;
       }
-      if (step == 'identity') {
-        await toIdentitySelection<void>(productId: productId);
-      } else {
-        await toIdentityFace<void>(productId: productId);
+      switch (step) {
+        case 'identity':
+          await toIdentitySelection<void>(productId: productId);
+        case 'face':
+          await toIdentityFace<void>(productId: productId);
+        case 'personal':
+          await toPersonalInformation<void>(productId: productId);
+        case 'work':
+          await toWorkInformation<void>(productId: productId);
+        case 'ext':
+          await toEmergencyContact<void>(productId: productId);
+        case 'bank':
+          await toBindCard<void>(productId: productId);
       }
       return;
     }

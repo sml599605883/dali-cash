@@ -3,6 +3,6 @@ abstract final class ApiProtocol {
   static const message = 'cuckoo';
   static const data = 'unsphered';
 
-  static const successCodes = <int>{0, 20000};
+  static const successCodes = <int>{0};
   static const authExpiredCode = -2;
 }

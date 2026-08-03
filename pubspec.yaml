@@ -39,6 +39,7 @@ dependencies:
   encrypt: ^5.0.3
   flutter_easyloading: ^3.0.5
   flutter_image_compress: ^2.4.0
+  flutter_native_contact_picker: ^0.0.12
   get: ^4.7.3
   image_picker: ^1.2.2
   package_info_plus: ^10.2.1
@@ -78,6 +79,7 @@ flutter:
     - assets/tabbar/
     - assets/mine/
     - assets/certification/
+    - assets/certification/address_picker/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

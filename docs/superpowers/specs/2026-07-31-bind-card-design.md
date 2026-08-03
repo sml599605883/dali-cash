@@ -35,7 +35,7 @@ Each field uses:
 - `enterostomy`: label
 - `felicitous`: logical save key
 - `laggings`: placeholder
-- `solferino`: `enum` or text input
+- `solferino`: control type using the documented obfuscated values: `KrimmersOpinioned` for selection and `Haphtaras` for text input. Legacy clear-text values such as `enum` and `txt` are not part of the runtime contract.
 - `poolsides`: enum options
 - `muscats`: optional marker
 - `fyke`: initial value
@@ -78,6 +78,12 @@ The page follows the 375 x 812 Lanhu artboard:
 
 The form area scrolls when the server returns more fields than the artboard example. Fixed header and footer geometry remains stable. Switching groups preserves each group's controllers and selected options.
 
+### Text-field suggestion
+
+When a text field provides a non-empty `degringolade`, show its suggestion only while that field is focused and its current input is empty. Render the suggestion inside the input's right side as Flutter layout and decoration, not as a background image: use the Lanhu-matched translucent dark fill, 4-pixel radius, compact padding, 12-pixel white text, and a 10 x 10 close control. The supplied close PNG is renamed semantically and exposed through `AppAssets`; no other suggestion artwork is introduced.
+
+Tapping the suggestion applies every non-empty server suggestion to currently empty text fields in the selected group, matching Kaibigan Loan. Existing user-entered values are never overwritten. Tapping the close control dismisses only the current field's suggestion and must not trigger suggestion application. Entering text hides the suggestion; clearing the field while it remains focused shows it again unless the user explicitly dismissed it. Switching account groups clears the active suggestion without discarding field values or per-field dismissal state.
+
 ## Selection Interaction
 
 Enumeration fields open a shared bind-card option sheet consistent with the existing Dali certification sheet language. Each option can show its server logo, label, availability status, and maintenance copy. The entire row is tappable. At most five rows are visible before the list scrolls.
@@ -91,6 +97,7 @@ Cancel leaves the field unchanged. Done commits the normalized option value whil
 - Empty: show a stable empty state when no valid groups are returned.
 - Submission: disable `Upload` while a request or liveness continuation is active.
 - Validation: focus or identify the first missing required field; reject mismatched account confirmation locally.
+- Keyboard: tapping non-interactive page space dismisses the current input focus without changing field values or intercepting existing controls.
 - API errors: use the existing Dali error presenter and preserve non-empty server messages.
 - Permission denial: use the existing Cupertino camera settings dialog and do not start TrustDecision without permission.
 - Lifecycle: dispose controllers and focus nodes created for dynamic fields.
@@ -117,9 +124,18 @@ On response code `20000`:
 Add focused tests for:
 
 - Mixed numeric/string group and option value parsing.
+- Strict parsing of `KrimmersOpinioned` and `Haphtaras` bind-card control values without relying on legacy `enum` or `txt` fixtures.
 - Filtering malformed groups and fields without crashing.
 - Dynamic E-wallet and Bank tabs and future returned groups.
 - State preservation across tab switches.
+- Keyboard dismissal when a focused text field is followed by a tap on non-interactive page space.
+- Parsing `degringolade` into a semantic text-field suggestion value.
+- Showing the in-input suggestion only for a focused, empty text field with a non-empty suggestion.
+- Hiding the suggestion after text entry and restoring it after clearing unless explicitly dismissed.
+- Closing only the current suggestion without changing field text or applying values.
+- Applying server suggestions only to empty text fields in the selected group when the suggestion is tapped.
+- Clearing the active suggestion on account-group switches while preserving field values.
+- Semantic close-asset registration and code-rendered suggestion background geometry.
 - Enum selection label/value behavior and option-row tap targets.
 - Required-field and repeated-account validation.
 - Exact Dali request mapping for initialization and submission.

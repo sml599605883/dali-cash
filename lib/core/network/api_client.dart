@@ -102,6 +102,114 @@ class ApiClient {
     );
   }
 
+  Future<ApiResponse> personalInfo({required String productId}) {
+    return post(
+      ApiEndpoints.personalInfo,
+      data: {'highlands': productId, 'suiting': _randomDigits(6)},
+    );
+  }
+
+  Future<ApiResponse> savePersonalInfo({
+    required String productId,
+    required Map<String, String> fields,
+  }) {
+    return post(
+      ApiEndpoints.savePersonalInfo,
+      data: {
+        ...fields,
+        'highlands': productId,
+        'confit': _randomDigits(6),
+        'chromophobe': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> jobInfo({required String productId}) {
+    return get(
+      ApiEndpoints.jobInfo,
+      params: {'highlands': productId, 'suiting': _randomDigits(6)},
+    );
+  }
+
+  Future<ApiResponse> saveJobInfo({
+    required String productId,
+    required Map<String, String> fields,
+  }) {
+    return post(
+      ApiEndpoints.saveJobInfo,
+      data: {
+        ...fields,
+        'highlands': productId,
+        'salivas': _randomDigits(6),
+        'jumped': _randomDigits(6),
+        'punitory': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> extInfoV2({required String productId}) {
+    return get(
+      ApiEndpoints.extInfoV2,
+      params: {'highlands': productId, 'populace': _randomDigits(6)},
+    );
+  }
+
+  Future<ApiResponse> saveExtInfoV2({
+    required String productId,
+    required List<Map<String, String>> contacts,
+  }) {
+    return post(
+      ApiEndpoints.saveExtInfoV2,
+      data: {
+        'highlands': productId,
+        'unsphered': jsonEncode(contacts),
+        'vigorishes': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> addressInit() {
+    return get(ApiEndpoints.cityInit);
+  }
+
+  Future<ApiResponse> cardInit({required String productId}) {
+    return get(
+      ApiEndpoints.cardInit,
+      params: {
+        'highlands': productId,
+        'parametrization': _randomDigits(6),
+        'uredia': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> bindCard({
+    required String productId,
+    required String cardType,
+    required Map<String, String> fields,
+    String livenessType = '',
+    String livenessId = '',
+    String image = '',
+    String businessId = '',
+    String license = '',
+  }) {
+    return post(
+      ApiEndpoints.bindCard,
+      acceptedCodes: const {20000},
+      data: {
+        ...fields,
+        'highlands': productId,
+        'rapscallion': cardType,
+        'weave': _randomDigits(6),
+        'pileated': livenessType,
+        'feoffed': livenessId,
+        'attach': image,
+        'infantilisms': businessId,
+        'miscasts': license,
+      },
+    );
+  }
+
   Future<ApiResponse> uploadImage({
     required String sociologeses,
     required String scabble,
@@ -285,6 +393,7 @@ class ApiClient {
     String path, {
     Map<String, dynamic> data = const <String, dynamic>{},
     Map<String, dynamic> query = const <String, dynamic>{},
+    Set<int> acceptedCodes = const <int>{},
     Options? options,
   }) async {
     final signedQuery = await ApiSignature(
@@ -297,6 +406,7 @@ class ApiClient {
         data: data,
         options: options,
       ),
+      acceptedCodes: acceptedCodes,
     );
   }
 
@@ -385,11 +495,12 @@ class ApiClient {
   }
 
   Future<ApiResponse> _execute(
-    Future<Response<dynamic>> Function() request,
-  ) async {
+    Future<Response<dynamic>> Function() request, {
+    Set<int> acceptedCodes = const <int>{},
+  }) async {
     try {
       final response = await request();
-      return _handleResponse(response.data);
+      return _handleResponse(response.data, acceptedCodes: acceptedCodes);
     } on DioException catch (error) {
       debugPrint(
         '[DaliNetworkDiag] Dio failure uri=${error.requestOptions.uri} '
@@ -399,10 +510,16 @@ class ApiClient {
     }
   }
 
-  Future<ApiResponse> _handleResponse(dynamic raw) async {
+  Future<ApiResponse> _handleResponse(
+    dynamic raw, {
+    Set<int> acceptedCodes = const <int>{},
+  }) async {
     final response = ApiResponse.fromRaw(Json(raw));
     if (response.isAuthExpired) {
       await _handleAuthExpired();
+    }
+    if (acceptedCodes.contains(response.code)) {
+      return response;
     }
     return response.ensureSuccess();
   }

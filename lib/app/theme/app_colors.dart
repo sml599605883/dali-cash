@@ -42,4 +42,27 @@ abstract final class AppColors {
   static const identityPickerText = Color.fromRGBO(102, 102, 102, 1);
   static const identityPickerMuted = Color.fromRGBO(153, 153, 153, 1);
   static const identityPickerDivider = Color.fromRGBO(238, 238, 238, 1);
+  static const certificationSelectionText = Color.fromRGBO(24, 28, 23, 1);
+  static const addressPickerPanel = Color.fromRGBO(245, 245, 245, 1);
+  static const addressPickerLabel = Color.fromRGBO(42, 42, 41, 1);
+  static const addressPickerSelected = Color.fromRGBO(13, 27, 23, 1);
+  static const personalInformationFieldBackground = Color.fromRGBO(
+    249,
+    249,
+    249,
+    1,
+  );
+  static const personalInformationPlaceholder = Color.fromRGBO(
+    183,
+    183,
+    183,
+    1,
+  );
+  static const personalInformationFooterShadow = Color.fromRGBO(
+    233,
+    233,
+    233,
+    0.5,
+  );
+  static const bindCardSuggestionBackground = Color.fromRGBO(0, 0, 0, 0.59);
 }

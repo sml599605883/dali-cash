@@ -8,6 +8,10 @@ import 'package:dali_cash/features/certification/identity_selection/identity_sel
 import 'package:dali_cash/features/certification/identity_upload/identity_upload_page.dart';
 import 'package:dali_cash/features/certification/identity_confirmation/identity_confirmation_page.dart';
 import 'package:dali_cash/features/certification/identity_face/identity_face_page.dart';
+import 'package:dali_cash/features/certification/personal_information/personal_information_page.dart';
+import 'package:dali_cash/features/certification/work_information/work_information_page.dart';
+import 'package:dali_cash/features/certification/emergency_contact/emergency_contact_page.dart';
+import 'package:dali_cash/features/certification/bind_card/bind_card_page.dart';
 import 'package:dali_cash/features/main_shell/main_shell_page.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +52,19 @@ class DaliCashApp extends StatelessWidget {
           name: AppRoutes.identityFace,
           page: () => const IdentityFacePage(),
         ),
+        GetPage(
+          name: AppRoutes.personalInformation,
+          page: () => const PersonalInformationPage(),
+        ),
+        GetPage(
+          name: AppRoutes.workInformation,
+          page: () => const WorkInformationPage(),
+        ),
+        GetPage(
+          name: AppRoutes.emergencyContact,
+          page: () => const EmergencyContactPage(),
+        ),
+        GetPage(name: AppRoutes.bindCard, page: () => const BindCardPage()),
       ],
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.surface,

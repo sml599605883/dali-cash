@@ -19,7 +19,7 @@ void main() {
     expect(response.isSuccess, isTrue);
   });
 
-  test('accepts numeric and legacy success codes', () {
+  test('accepts zero and reserves 20000 for endpoint-specific handling', () {
     expect(
       ApiResponse.fromRaw(
         Json({'felicitous': 0, 'cuckoo': '', 'unsphered': null}),
@@ -30,7 +30,7 @@ void main() {
       ApiResponse.fromRaw(
         Json({'felicitous': '20000', 'cuckoo': '', 'unsphered': null}),
       ).isSuccess,
-      isTrue,
+      isFalse,
     );
   });
 

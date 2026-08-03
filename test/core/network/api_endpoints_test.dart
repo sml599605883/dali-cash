@@ -8,5 +8,7 @@ void main() {
     expect(ApiEndpoints.uploadImage, '/lutes/pertinencies');
     expect(ApiEndpoints.uploadDeviceInfo, '/lutes/outgnaws');
     expect(ApiEndpoints.orderList, '/lutes/telfered');
+    expect(ApiEndpoints.personalInfo, '/lutes/allanites');
+    expect(ApiEndpoints.savePersonalInfo, '/lutes/movables');
   });
 }

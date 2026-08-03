@@ -16,5 +16,28 @@ void main() {
 
     expect(find.text('Security first.'), findsOneWidget);
     expect(find.byType(IdentityPromptBanner), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('identityPromptBanner'))).width,
+      343,
+    );
+  });
+
+  testWidgets('scales its horizontal screen margin on wider screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(750, 1624);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    ScreenAdapter.initForSize(const Size(750, 1624));
+
+    await tester.pumpWidget(
+      const MaterialApp(home: IdentityPromptBanner(message: 'Security first.')),
+    );
+
+    expect(
+      tester.getSize(find.byKey(const Key('identityPromptBanner'))).width,
+      686,
+    );
   });
 }

@@ -44,6 +44,7 @@ class NoNetworkApiClient extends ApiClient {
     String path, {
     Map<String, dynamic> data = const <String, dynamic>{},
     Map<String, dynamic> query = const <String, dynamic>{},
+    Set<int> acceptedCodes = const <int>{},
     Options? options,
   }) {
     return _blockedTransport();

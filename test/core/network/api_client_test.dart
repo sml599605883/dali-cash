@@ -119,6 +119,163 @@ void main() {
     },
   );
 
+  test('personalInfo posts documented product and generated field', () async {
+    await client.personalInfo(productId: 'product-42');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.personalInfo));
+    expect(request.data, {'highlands': 'product-42', 'suiting': '123456'});
+  });
+
+  test('savePersonalInfo preserves dynamic server field keys', () async {
+    await client.savePersonalInfo(
+      productId: 'product-42',
+      fields: {'phillis': '4', 'offer': 'user@example.com'},
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.savePersonalInfo));
+    expect(request.data, {
+      'phillis': '4',
+      'offer': 'user@example.com',
+      'highlands': 'product-42',
+      'confit': '123456',
+      'chromophobe': '123456',
+    });
+  });
+
+  test('jobInfo gets documented product and generated field', () async {
+    await client.jobInfo(productId: 'product-42');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith(ApiEndpoints.jobInfo));
+    expect(request.queryParameters['highlands'], 'product-42');
+    expect(request.queryParameters['suiting'], '123456');
+  });
+
+  test('extInfoV2 gets the documented product and generated field', () async {
+    await client.extInfoV2(productId: 'product-42');
+
+    final request = adapter.lastRequest!;
+    expect(request.path, endsWith(ApiEndpoints.extInfoV2));
+    expect(request.method, 'GET');
+    expect(request.queryParameters['highlands'], 'product-42');
+    expect(request.queryParameters['populace'], '123456');
+  });
+
+  test('saveExtInfoV2 posts contacts as the documented JSON string', () async {
+    final contacts = [
+      {
+        'poet': '85692109434',
+        'crocidolites': 'Anna',
+        'roebuck': '1',
+        'attractances': 'first',
+      },
+    ];
+    await client.saveExtInfoV2(productId: 'product-42', contacts: contacts);
+
+    final request = adapter.lastRequest!;
+    expect(request.path, endsWith(ApiEndpoints.saveExtInfoV2));
+    expect(request.method, 'POST');
+    expect(request.data['highlands'], 'product-42');
+    expect(request.data['unsphered'], jsonEncode(contacts));
+    expect(request.data['vigorishes'], '123456');
+  });
+
+  test('saveJobInfo preserves dynamic server field keys', () async {
+    await client.saveJobInfo(
+      productId: 'product-42',
+      fields: {'company_name': 'SPSS', 'opportunities': 'Once a Month|1'},
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.saveJobInfo));
+    expect(request.data, {
+      'company_name': 'SPSS',
+      'opportunities': 'Once a Month|1',
+      'highlands': 'product-42',
+      'salivas': '123456',
+      'jumped': '123456',
+      'punitory': '123456',
+    });
+  });
+
+  test('addressInit gets the documented address hierarchy', () async {
+    await client.addressInit();
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith(ApiEndpoints.cityInit));
+  });
+
+  test('cardInit gets documented bind-card fields', () async {
+    await client.cardInit(productId: 'product-42');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith(ApiEndpoints.cardInit));
+    expect(request.queryParameters['highlands'], 'product-42');
+    expect(request.queryParameters['parametrization'], '123456');
+    expect(request.queryParameters['uredia'], '123456');
+  });
+
+  test(
+    'bindCard posts documented Dali fields and preserves liveness-required code',
+    () async {
+      adapter.responseBody =
+          '{"felicitous":"20000","cuckoo":"","unsphered":{}}';
+
+      final response = await client.bindCard(
+        productId: 'product-42',
+        cardType: '1',
+        fields: {
+          'global': '100',
+          'rattlesnakes': 'Ana',
+          'monerans': 'M',
+          'sloid': 'Santos',
+          'whops': '09171234567',
+          'shallowly': '09171234567',
+        },
+      );
+
+      expect(response.code, 20000);
+      final request = adapter.lastRequest!;
+      expect(request.method, 'POST');
+      expect(request.path, endsWith(ApiEndpoints.bindCard));
+      expect(request.data, {
+        'highlands': 'product-42',
+        'rapscallion': '1',
+        'global': '100',
+        'rattlesnakes': 'Ana',
+        'monerans': 'M',
+        'sloid': 'Santos',
+        'whops': '09171234567',
+        'shallowly': '09171234567',
+        'weave': '123456',
+        'pileated': '',
+        'feoffed': '',
+        'attach': '',
+        'infantilisms': '',
+        'miscasts': '',
+      });
+
+      await expectLater(
+        client.post('/lutes/other'),
+        throwsA(
+          isA<ApiBusinessException>().having(
+            (error) => error.code,
+            'code',
+            20000,
+          ),
+        ),
+      );
+    },
+  );
+
   test('sendSmsCode posts documented fields and generated value', () async {
     await client.sendSmsCode(phone: '9123456789');
 
