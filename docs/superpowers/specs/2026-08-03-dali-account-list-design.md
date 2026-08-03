@@ -177,8 +177,9 @@ Use the supplied project assets without downloading duplicate Lanhu slices:
 - `assets/添加@3x.png` — add icon.
 - `assets/矩形@3x.png` — outlined add-payment-method border.
 
-The assets are exposed through semantic `AppAssets` constants. All colors are
-added to `AppColors`; widgets do not hardcode hexadecimal colors.
+The assets are exposed through semantic `AppAssets` constants. Widgets reuse
+matching `AppColors` tokens and add a token only if no exact match exists;
+widgets do not hardcode hexadecimal colors.
 
 Important design values:
 
