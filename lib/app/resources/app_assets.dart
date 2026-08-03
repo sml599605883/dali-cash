@@ -1,6 +1,18 @@
 abstract final class AppAssets {
   static const progressEmpty = 'assets/位图@3x.png';
 
+  static const accountBankLabel = 'assets/account/account_bank_label.png';
+  static const accountWalletLabel = 'assets/account/account_wallet_label.png';
+  static const accountCashPickupLabel =
+      'assets/account/account_cash_pickup_label.png';
+  static const accountOptionSelected =
+      'assets/account/account_option_selected.png';
+  static const accountOptionUnselected =
+      'assets/account/account_option_unselected.png';
+  static const accountAddIcon = 'assets/account/account_add_icon.png';
+  static const accountAddMethodBorder =
+      'assets/account/account_add_method_border.png';
+
   static const identityRecommendedLabel =
       'assets/certification/identity_recommended_label.png';
   static const identityOtherLabel =

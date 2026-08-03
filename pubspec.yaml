@@ -74,6 +74,7 @@ flutter:
 
   assets:
     - assets/位图@3x.png
+    - assets/account/
     - assets/login/
     - assets/home/
     - assets/tabbar/
