@@ -280,7 +280,7 @@ abstract final class NavigationHelper {
     required String url,
     String? title,
   }) {
-    final uri = _webUri(url);
+    final uri = webViewUri(url);
     if (uri == null) {
       logger('invalid WebView URL: $url');
       return null;
@@ -296,7 +296,7 @@ abstract final class NavigationHelper {
     String? title,
     bool removeBindCard = false,
   }) {
-    final uri = _webUri(url);
+    final uri = webViewUri(url);
     if (uri == null) {
       logger('invalid WebView replacement URL: $url');
       return null;
@@ -319,7 +319,7 @@ abstract final class NavigationHelper {
     required String url,
     String? title,
   }) {
-    final uri = _webUri(url);
+    final uri = webViewUri(url);
     if (uri == null) {
       logger('invalid WebView replacement URL: $url');
       return null;
@@ -337,6 +337,8 @@ abstract final class NavigationHelper {
       return true;
     }, arguments: {'url': uri.toString(), 'title': title});
   }
+
+  static Uri? webViewUri(String value) => _webUri(value);
 
   static Future<void> navigateRawTarget(
     String rawTarget, {

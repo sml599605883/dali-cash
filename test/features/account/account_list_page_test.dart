@@ -163,6 +163,28 @@ void main() {
     );
   });
 
+  testWidgets('invalid redirect does not replace the account flow', (
+    tester,
+  ) async {
+    final errors = <String>[];
+    var replacementCount = 0;
+    await _pumpPage(
+      tester,
+      load: (_) async => _accounts(),
+      submit: ({required orderNo, required bindId}) async =>
+          'dali-cash://account-changed',
+      replace: (_) async => replacementCount++,
+      showError: (message) async => errors.add(message),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountListConfirm')));
+    await tester.pumpAndSettle();
+
+    expect(replacementCount, 0);
+    expect(errors, ['Invalid account change result url']);
+  });
+
   testWidgets('375x896 layout remains scrollable without overflow', (
     tester,
   ) async {

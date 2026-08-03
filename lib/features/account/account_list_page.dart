@@ -205,6 +205,9 @@ class _AccountListPageState extends State<AccountListPage> {
       if (url.trim().isEmpty) {
         throw ApiBusinessException('Missing account change result url');
       }
+      if (NavigationHelper.webViewUri(url) == null) {
+        throw ApiBusinessException('Invalid account change result url');
+      }
       await (widget.replace ?? _defaultReplace)(url.trim());
     } catch (error) {
       if (mounted) {

@@ -446,6 +446,34 @@ void main() {
     });
   }
 
+  testWidgets('account-change rejects an invalid redirect url', (tester) async {
+    final errors = <String>[];
+    var replacementCount = 0;
+    await _pumpPage(
+      tester,
+      orderNo: 'ORDER-3',
+      isAccountChange: true,
+      load: (_) async =>
+          _bindCardData(channelValue: '100', accountValue: '09171234567'),
+      save: (productId, cardType, fields, liveness) async =>
+          ApiResponse(code: 0, message: '', states: Json({'hoover': '5326'})),
+      changeAccount: ({required orderNo, required bindId}) async => ApiResponse(
+        code: 0,
+        message: '',
+        states: Json({'misericorde': 'dali-cash://account-changed'}),
+      ),
+      replaceWithWebView: ({required url}) async => replacementCount++,
+      showError: (message) async => errors.add(message),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bindCardUpload')));
+    await tester.pumpAndSettle();
+
+    expect(replacementCount, 0);
+    expect(errors, ['Invalid account change result url']);
+  });
+
   testWidgets('code 20000 completes TrustDecision and resubmits once', (
     tester,
   ) async {

@@ -612,6 +612,10 @@ class _BindCardPageState extends State<BindCardPage> {
         await _showError('Missing account change result url');
         return;
       }
+      if (NavigationHelper.webViewUri(url) == null) {
+        await _showError('Invalid account change result url');
+        return;
+      }
       await (widget.replaceWithWebView ?? _defaultReplaceWithWebView)(url: url);
       return;
     }
