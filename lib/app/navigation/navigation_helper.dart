@@ -221,6 +221,29 @@ abstract final class NavigationHelper {
     return Future<T?>.value();
   }
 
+  static Future<T?>? replaceAccountChangeFlowWithWebView<T extends Object?>({
+    required String url,
+    String? title,
+  }) {
+    final uri = _webUri(url);
+    if (uri == null) {
+      logger('invalid WebView replacement URL: $url');
+      return null;
+    }
+    var removedWebView = false;
+    return Get.offNamedUntil<T>(AppRoutes.webView, (route) {
+      final name = route.settings.name;
+      if (name == AppRoutes.accountList || name == AppRoutes.bindCard) {
+        return false;
+      }
+      if (!removedWebView && name == AppRoutes.webView) {
+        removedWebView = true;
+        return false;
+      }
+      return true;
+    }, arguments: {'url': uri.toString(), 'title': title});
+  }
+
   static Future<void> navigateRawTarget(
     String rawTarget, {
     Object? arguments,

@@ -8,4 +8,5 @@ abstract final class AppRoutes {
   static const workInformation = '/certification/work-information';
   static const emergencyContact = '/certification/emergency-contact';
   static const bindCard = '/certification/bind-card';
+  static const accountList = '/account-list';
 }

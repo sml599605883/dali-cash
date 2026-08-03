@@ -161,6 +161,125 @@ void main() {
     expect(navigationLogs.single, contains('WebView deferred'));
   });
 
+  testWidgets('replaces the account-list flow and returns to Home', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    NavigationHelper.toWebView<void>(url: 'https://example.test/old');
+    await tester.pumpAndSettle();
+    Get.toNamed<void>(AppRoutes.accountList);
+    await tester.pumpAndSettle();
+
+    NavigationHelper.replaceAccountChangeFlowWithWebView<void>(
+      url: '  https://example.test/new  ',
+      title: 'Replacement',
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(Get.arguments, {
+      'url': 'https://example.test/new',
+      'title': 'Replacement',
+    });
+    expect(
+      find.text('https://example.test/old', skipOffstage: false),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('accountListStub'), skipOffstage: false),
+      findsNothing,
+    );
+
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('homeStub')), findsOneWidget);
+    expect(
+      find.byKey(const Key('accountListStub'), skipOffstage: false),
+      findsNothing,
+    );
+    expect(
+      find.text('https://example.test/old', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
+  testWidgets('replaces account-list and bind-card flow and returns to Home', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    NavigationHelper.toWebView<void>(url: 'https://example.test/old');
+    await tester.pumpAndSettle();
+    Get.toNamed<void>(AppRoutes.accountList);
+    await tester.pumpAndSettle();
+    NavigationHelper.toBindCard<void>(productId: 'product-1');
+    await tester.pumpAndSettle();
+
+    NavigationHelper.replaceAccountChangeFlowWithWebView<void>(
+      url: 'https://example.test/new',
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(Get.arguments, {'url': 'https://example.test/new', 'title': null});
+    expect(
+      find.byKey(const Key('accountListStub'), skipOffstage: false),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('bindCardStub'), skipOffstage: false),
+      findsNothing,
+    );
+    expect(
+      find.text('https://example.test/old', skipOffstage: false),
+      findsNothing,
+    );
+
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('homeStub')), findsOneWidget);
+    expect(
+      find.byKey(const Key('accountListStub'), skipOffstage: false),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('bindCardStub'), skipOffstage: false),
+      findsNothing,
+    );
+    expect(
+      find.text('https://example.test/old', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
+  testWidgets('invalid account-change replacement leaves the stack unchanged', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    NavigationHelper.toWebView<void>(url: 'https://example.test/old');
+    await tester.pumpAndSettle();
+    Get.toNamed<void>(AppRoutes.accountList, arguments: {'source': 'test'});
+    await tester.pumpAndSettle();
+
+    final result = NavigationHelper.replaceAccountChangeFlowWithWebView<void>(
+      url: 'javascript:alert(1)',
+    );
+    await tester.pumpAndSettle();
+
+    expect(result, isNull);
+    expect(Get.currentRoute, AppRoutes.accountList);
+    expect(Get.arguments, {'source': 'test'});
+    expect(find.byKey(const Key('accountListStub')), findsOneWidget);
+    expect(navigationLogs.single, contains('invalid WebView replacement URL'));
+
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(find.text('https://example.test/old'), findsOneWidget);
+  });
+
   testWidgets('backs out of the current route', (tester) async {
     await _pumpRoutes(tester);
     NavigationHelper.toLogin<void>();
@@ -573,6 +692,12 @@ Future<void> _pumpRoutes(WidgetTester tester) {
           name: AppRoutes.bindCard,
           page: () =>
               const Scaffold(body: Text('Bind card', key: Key('bindCardStub'))),
+        ),
+        GetPage(
+          name: AppRoutes.accountList,
+          page: () => const Scaffold(
+            body: Text('Account list', key: Key('accountListStub')),
+          ),
         ),
       ],
     ),
