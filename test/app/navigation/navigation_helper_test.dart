@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dali_cash/app/navigation/navigation_helper.dart';
 import 'package:dali_cash/app/routes/app_routes.dart';
 import 'package:dali_cash/core/json/json.dart';
@@ -17,6 +19,8 @@ void main() {
   late List<String> navigationLogs;
   late List<int> navigatedTabs;
   late List<String> permissionPrompts;
+  late List<Map<String, String>> productRedirectReports;
+  late List<Uri> externalUris;
   late int settingsOpenCount;
 
   setUp(() async {
@@ -27,6 +31,8 @@ void main() {
     navigationLogs = <String>[];
     navigatedTabs = <int>[];
     permissionPrompts = <String>[];
+    productRedirectReports = <Map<String, String>>[];
+    externalUris = <Uri>[];
     settingsOpenCount = 0;
     Get.put<ApiClient>(apiClient);
     NavigationHelper.loadingPresenter = () async {
@@ -62,6 +68,14 @@ void main() {
       settingsOpenCount++;
       return true;
     };
+    NavigationHelper
+        .productRedirectReporter = ({required productId, required orderNo}) {
+      productRedirectReports.add({'productId': productId, 'orderNo': orderNo});
+    };
+    NavigationHelper.externalUriLauncher = (uri) async {
+      externalUris.add(uri);
+      return true;
+    };
   });
 
   tearDown(() {
@@ -80,6 +94,10 @@ void main() {
         NavigationHelper.defaultPermissionPromptPresenter;
     NavigationHelper.appSettingsOpener =
         NavigationHelper.defaultAppSettingsOpener;
+    NavigationHelper.productRedirectReporter =
+        NavigationHelper.defaultProductRedirectReporter;
+    NavigationHelper.externalUriLauncher =
+        NavigationHelper.defaultExternalUriLauncher;
     Get.reset();
   });
 
@@ -143,7 +161,7 @@ void main() {
     );
 
     expect(apiClient.detailedProducts, ['2']);
-    expect(navigationLogs, isEmpty);
+    expect(navigationLogs.single, contains('status=0'));
   });
 
   test('logs documented routes whose features are not available yet', () async {
@@ -153,12 +171,52 @@ void main() {
     expect(navigationLogs.single, contains('not available'));
   });
 
-  test('logs HTTP targets until the internal WebView exists', () async {
+  testWidgets('routes HTTP targets to the internal WebView', (tester) async {
+    await _pumpRoutes(tester);
+
     await NavigationHelper.navigateRawTarget(
       'https://example.test/errorUrl?productId=42',
     );
+    await tester.pumpAndSettle();
 
-    expect(navigationLogs.single, contains('WebView deferred'));
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(Get.arguments, {
+      'url': 'https://example.test/errorUrl?productId=42',
+      'title': null,
+    });
+    expect(navigationLogs, isEmpty);
+  });
+
+  test('opens external URIs through the injected launcher', () async {
+    final opened = await NavigationHelper.openExternalUri(
+      Uri.parse('tel:+639171234567'),
+    );
+
+    expect(opened, isTrue);
+    expect(externalUris, [Uri.parse('tel:+639171234567')]);
+  });
+
+  testWidgets('replaces one old WebView and account-change bind route', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    NavigationHelper.toWebView<void>(url: 'https://example.test/old');
+    await tester.pumpAndSettle();
+    NavigationHelper.toBindCard<void>(productId: 'product-1');
+    await tester.pumpAndSettle();
+
+    NavigationHelper.replaceWebView<void>(
+      url: 'https://example.test/new',
+      removeBindCard: true,
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(Get.arguments, {'url': 'https://example.test/new', 'title': null});
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('homeStub')), findsOneWidget);
+    expect(find.byKey(const Key('bindCardStub')), findsNothing);
   });
 
   testWidgets('replaces the account-list flow and returns to Home', (
@@ -278,6 +336,41 @@ void main() {
 
     expect(Get.currentRoute, AppRoutes.webView);
     expect(find.text('https://example.test/old'), findsOneWidget);
+  });
+
+  testWidgets('opens bind-card with Dali account-change arguments', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+
+    NavigationHelper.toBindCard<void>(
+      productId: 'product-2',
+      orderNo: 'ORDER-2',
+      isAccountChange: true,
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.arguments, {
+      'highlands': 'product-2',
+      'saggards': 'ORDER-2',
+      'isAccountChange': true,
+    });
+  });
+
+  testWidgets('opens account list with Dali product and order arguments', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+
+    NavigationHelper.toAccountList<void>(
+      productId: ' product-3 ',
+      orderNo: ' ORDER-3 ',
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.accountList);
+    expect(Get.arguments, {'highlands': 'product-3', 'saggards': 'ORDER-3'});
+    expect(find.byKey(const Key('accountListStub')), findsOneWidget);
   });
 
   testWidgets('backs out of the current route', (tester) async {
@@ -615,6 +708,175 @@ void main() {
     expect(navigationLogs, isEmpty);
   });
 
+  final originalProductDetailSteps = <(String, String, String)>[
+    ('public', AppRoutes.identitySelection, 'identitySelectionStub'),
+    ('face', AppRoutes.identityFace, 'identityFaceStub'),
+    ('personal', AppRoutes.personalInformation, 'personalInformationStub'),
+    ('work', AppRoutes.workInformation, 'workInformationStub'),
+    ('ext', AppRoutes.emergencyContact, 'emergencyContactStub'),
+    ('bank', AppRoutes.bindCard, 'bindCardStub'),
+  ];
+  for (final (step, route, stubKey) in originalProductDetailSteps) {
+    testWidgets('product detail original $step step opens its page', (
+      tester,
+    ) async {
+      await _pumpRoutes(tester);
+      apiClient.detailResponse = ApiResponse(
+        code: 0,
+        message: '',
+        states: Json({
+          'shoepac': {'underfeeding': 'product-$step'},
+          'spirochaete': {'entrecote': step},
+        }),
+      );
+
+      await NavigationHelper.navigateRawTarget(
+        'ph://dali-cash/ios/Conifer?highlands=product-$step',
+      );
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, route);
+      expect(Get.arguments, {'highlands': 'product-$step'});
+      expect(find.byKey(Key(stubKey)), findsOneWidget);
+    });
+  }
+
+  test(
+    'product detail continuation resolves order target after step completion',
+    () async {
+      final redirectResponse = Completer<ApiResponse>();
+      apiClient.pendingProductPushResponse = redirectResponse;
+      apiClient.detailResponse = ApiResponse(
+        code: 0,
+        message: '',
+        states: Json({
+          'tucking': 200,
+          'shoepac': {
+            'underfeeding': 'product-order',
+            'saggards': 'ORDER-42',
+            'injective': '1100.00',
+            'resmooth': '91',
+            'mispatch': 1,
+          },
+          'spirochaete': {'entrecote': ''},
+        }),
+      );
+
+      final continuation = NavigationHelper.continueProductDetailFlow(
+        'product-order',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(apiClient.productPushRequests, [
+        {
+          'orderNo': 'ORDER-42',
+          'amount': '1100.00',
+          'term': '91',
+          'termType': '1',
+        },
+      ]);
+      expect(productRedirectReports, isEmpty);
+
+      redirectResponse.complete(
+        ApiResponse(
+          code: 0,
+          message: '',
+          states: Json({'millipede': 'https://example.test/order/ORDER-42'}),
+        ),
+      );
+      await continuation;
+
+      expect(productRedirectReports, [
+        {'productId': 'product-order', 'orderNo': 'ORDER-42'},
+      ]);
+      expect(navigationLogs, isEmpty);
+    },
+  );
+
+  test('product detail continuation logs a missing order number', () async {
+    apiClient.detailResponse = ApiResponse(
+      code: 0,
+      message: '',
+      states: Json({
+        'tucking': 200,
+        'shoepac': {'underfeeding': 'product-no-order'},
+      }),
+    );
+
+    await NavigationHelper.continueProductDetailFlow('product-no-order');
+
+    expect(apiClient.productPushRequests, isEmpty);
+    expect(productRedirectReports, isEmpty);
+    expect(navigationLogs.single, contains('missing order number'));
+  });
+
+  test('product detail continuation logs an empty order target', () async {
+    apiClient.detailResponse = ApiResponse(
+      code: 0,
+      message: '',
+      states: Json({
+        'tucking': 200,
+        'shoepac': {
+          'underfeeding': 'product-empty-target',
+          'saggards': 'ORDER-EMPTY',
+        },
+      }),
+    );
+
+    await NavigationHelper.continueProductDetailFlow('product-empty-target');
+
+    expect(apiClient.productPushRequests, hasLength(1));
+    expect(productRedirectReports, hasLength(1));
+    expect(navigationLogs.single, contains('empty target'));
+  });
+
+  test(
+    'product detail continuation logs a non-success detail status',
+    () async {
+      apiClient.detailResponse = ApiResponse(
+        code: 0,
+        message: '',
+        states: Json({
+          'tucking': 302,
+          'shoepac': {
+            'underfeeding': 'product-denied',
+            'saggards': 'ORDER-DENIED',
+          },
+        }),
+      );
+
+      await NavigationHelper.continueProductDetailFlow('product-denied');
+
+      expect(apiClient.productPushRequests, isEmpty);
+      expect(productRedirectReports, isEmpty);
+      expect(navigationLogs.single, contains('status=302'));
+    },
+  );
+
+  test(
+    'unknown product detail step logs without resolving an order target',
+    () async {
+      apiClient.detailResponse = ApiResponse(
+        code: 0,
+        message: '',
+        states: Json({
+          'tucking': 200,
+          'shoepac': {
+            'underfeeding': 'product-unknown',
+            'saggards': 'ORDER-UNKNOWN',
+          },
+          'spirochaete': {'entrecote': 'FutureCertificationStep'},
+        }),
+      );
+
+      await NavigationHelper.continueProductDetailFlow('product-unknown');
+
+      expect(apiClient.productPushRequests, isEmpty);
+      expect(productRedirectReports, isEmpty);
+      expect(navigationLogs.single, contains('FutureCertificationStep'));
+    },
+  );
+
   test('non-successful admission does not request product detail', () async {
     await apiClient.config.sessionStore.saveSessionId('session-id');
     apiClient.applyResponse = ApiResponse(
@@ -689,6 +951,12 @@ Future<void> _pumpRoutes(WidgetTester tester) {
           ),
         ),
         GetPage(
+          name: AppRoutes.emergencyContact,
+          page: () => const Scaffold(
+            body: Text('Emergency', key: Key('emergencyContactStub')),
+          ),
+        ),
+        GetPage(
           name: AppRoutes.bindCard,
           page: () =>
               const Scaffold(body: Text('Bind card', key: Key('bindCardStub'))),
@@ -697,6 +965,15 @@ Future<void> _pumpRoutes(WidgetTester tester) {
           name: AppRoutes.accountList,
           page: () => const Scaffold(
             body: Text('Account list', key: Key('accountListStub')),
+          ),
+        ),
+        GetPage(
+          name: AppRoutes.webView,
+          page: () => Scaffold(
+            body: Text(
+              Get.arguments?['url']?.toString() ?? '',
+              key: const Key('webViewStub'),
+            ),
           ),
         ),
       ],
@@ -710,6 +987,7 @@ class _FakeApiClient extends ApiClient {
   final List<String> appliedProducts = <String>[];
   final List<String> applySources = <String>[];
   final List<String> detailedProducts = <String>[];
+  final List<Map<String, String>> productPushRequests = <Map<String, String>>[];
   ApiResponse applyResponse = ApiResponse(
     code: 0,
     message: '',
@@ -724,6 +1002,12 @@ class _FakeApiClient extends ApiClient {
   );
   Object? applyError;
   Object? detailError;
+  Completer<ApiResponse>? pendingProductPushResponse;
+  ApiResponse productPushResponse = ApiResponse(
+    code: 0,
+    message: '',
+    states: Json({'millipede': ''}),
+  );
 
   @override
   Future<ApiResponse> productApply({
@@ -747,5 +1031,21 @@ class _FakeApiClient extends ApiClient {
       throw error;
     }
     return detailResponse;
+  }
+
+  @override
+  Future<ApiResponse> productPush({
+    required String orderNo,
+    required String amount,
+    required String term,
+    required String termType,
+  }) async {
+    productPushRequests.add({
+      'orderNo': orderNo,
+      'amount': amount,
+      'term': term,
+      'termType': termType,
+    });
+    return pendingProductPushResponse?.future ?? productPushResponse;
   }
 }

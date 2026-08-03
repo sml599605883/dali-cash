@@ -127,6 +127,13 @@ class ClientBridge {
     return ClientProxySettings.fromMap(result ?? const <Object?, Object?>{});
   }
 
+  Future<void> requestAppReview() async {
+    if (!supportsNativeBridge) {
+      throw UnsupportedError('App review is currently implemented for iOS.');
+    }
+    await _channel.invokeMethod<void>('requestAppReview');
+  }
+
   Future<TrustDecisionLivenessResult> showTrustDecisionLiveness(
     String license,
   ) async {

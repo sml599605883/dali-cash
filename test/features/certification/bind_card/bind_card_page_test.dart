@@ -359,6 +359,93 @@ void main() {
     expect(continuations, ['product-42']);
   });
 
+  testWidgets(
+    'account-change success replaces bind flow with a fresh WebView',
+    (tester) async {
+      final changes = <String>[];
+      final replacements = <String>[];
+      final continuations = <String>[];
+      final reports = <String>[];
+      await _pumpPage(
+        tester,
+        orderNo: 'ORDER-3',
+        isAccountChange: true,
+        load: (_) async =>
+            _bindCardData(channelValue: '100', accountValue: '09171234567'),
+        save: (productId, cardType, fields, liveness) async =>
+            ApiResponse(code: 0, message: '', states: Json({'hoover': '5326'})),
+        changeAccount: ({required orderNo, required bindId}) async {
+          changes.add('$orderNo:$bindId');
+          return ApiResponse(
+            code: 0,
+            message: '',
+            states: Json({'misericorde': 'https://h5.example/changed'}),
+          );
+        },
+        replaceWithWebView: ({required url}) async {
+          replacements.add(url);
+        },
+        continueFlow: (productId) async => continuations.add(productId),
+        reportRisk: (productId, startedAtSeconds) async {
+          reports.add('$productId:$startedAtSeconds');
+        },
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('bindCardUpload')));
+      await tester.pumpAndSettle();
+
+      expect(changes, ['ORDER-3:5326']);
+      expect(replacements, ['https://h5.example/changed']);
+      expect(continuations, isEmpty);
+      expect(reports, isEmpty);
+    },
+  );
+
+  for (final missing in <String>['order', 'bind', 'redirect']) {
+    testWidgets('account-change rejects missing $missing data', (tester) async {
+      final errors = <String>[];
+      var changeCount = 0;
+      var replacementCount = 0;
+      await _pumpPage(
+        tester,
+        orderNo: missing == 'order' ? '' : 'ORDER-3',
+        isAccountChange: true,
+        load: (_) async =>
+            _bindCardData(channelValue: '100', accountValue: '09171234567'),
+        save: (productId, cardType, fields, liveness) async => ApiResponse(
+          code: 0,
+          message: '',
+          states: Json({'hoover': missing == 'bind' ? '' : '5326'}),
+        ),
+        changeAccount: ({required orderNo, required bindId}) async {
+          changeCount++;
+          return ApiResponse(
+            code: 0,
+            message: '',
+            states: Json({
+              'misericorde': missing == 'redirect'
+                  ? ''
+                  : 'https://h5.example/changed',
+            }),
+          );
+        },
+        replaceWithWebView: ({required url}) async {
+          replacementCount++;
+        },
+        showError: (message) async => errors.add(message),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('bindCardUpload')));
+      await tester.pumpAndSettle();
+
+      expect(errors, hasLength(1));
+      expect(replacementCount, 0);
+      expect(changeCount, missing == 'order' || missing == 'bind' ? 0 : 1);
+    });
+  }
+
   testWidgets('code 20000 completes TrustDecision and resubmits once', (
     tester,
   ) async {
@@ -575,9 +662,13 @@ void main() {
 Future<void> _pumpPage(
   WidgetTester tester, {
   required BindCardLoad load,
+  String orderNo = '',
+  bool isAccountChange = false,
   BindCardSave? save,
   BindCardMessage? showError,
   BindCardContinue? continueFlow,
+  BindCardChangeAccount? changeAccount,
+  BindCardWebViewReplacement? replaceWithWebView,
   BindCardRiskReport? reportRisk,
   int Function()? nowSeconds,
   BindCardCameraPermissionRequester? requestCameraPermission,
@@ -594,10 +685,14 @@ Future<void> _pumpPage(
     MaterialApp(
       home: BindCardPage(
         productId: 'product-42',
+        orderNo: orderNo,
+        isAccountChange: isAccountChange,
         load: load,
         save: save,
         showError: showError ?? (_) async {},
         continueFlow: continueFlow ?? (_) async {},
+        changeAccount: changeAccount,
+        replaceWithWebView: replaceWithWebView,
         reportRisk: reportRisk ?? (_, _) async {},
         nowSeconds: nowSeconds,
         requestCameraPermission: requestCameraPermission,

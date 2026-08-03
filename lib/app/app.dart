@@ -12,8 +12,11 @@ import 'package:dali_cash/features/certification/personal_information/personal_i
 import 'package:dali_cash/features/certification/work_information/work_information_page.dart';
 import 'package:dali_cash/features/certification/emergency_contact/emergency_contact_page.dart';
 import 'package:dali_cash/features/certification/bind_card/bind_card_page.dart';
+import 'package:dali_cash/features/account/account_list_page.dart';
 import 'package:dali_cash/features/main_shell/main_shell_page.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
+import 'package:dali_cash/features/webview/dali_webview_page.dart';
+import 'package:dali_cash/core/json/json.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
@@ -65,6 +68,20 @@ class DaliCashApp extends StatelessWidget {
           page: () => const EmergencyContactPage(),
         ),
         GetPage(name: AppRoutes.bindCard, page: () => const BindCardPage()),
+        GetPage(
+          name: AppRoutes.accountList,
+          page: () => const AccountListPage(),
+        ),
+        GetPage(
+          name: AppRoutes.webView,
+          page: () {
+            final arguments = Json(Get.arguments);
+            return DaliWebViewPage(
+              initialUrl: arguments['url'].stringValue,
+              initialTitle: arguments['title'].stringOrNull,
+            );
+          },
+        ),
       ],
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.surface,

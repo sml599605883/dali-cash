@@ -106,6 +106,64 @@ void main() {
     });
   });
 
+  test('productPush posts documented order continuation fields', () async {
+    await client.productPush(
+      orderNo: 'ORDER-42',
+      amount: '1100.00',
+      term: '91',
+      termType: '1',
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.productPush));
+    expect(request.data, {
+      'titled': 'ORDER-42',
+      'injective': '1100.00',
+      'resmooth': '91',
+      'mispatch': '1',
+      'gulpers': '123456',
+      'tap': '123456',
+      'verste': '123456',
+      'respective': '123456',
+    });
+  });
+
+  test('original account retry posts the documented order field', () async {
+    await client.retryOriginalAccount(orderNo: 'ORDER-1');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.userReloan));
+    expect(request.data, {'saggards': 'ORDER-1'});
+  });
+
+  test('user account list posts Dali product and generated fields', () async {
+    await client.userAccountList(productId: 'product-1');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.userCardList));
+    expect(request.data, {
+      'highlands': 'product-1',
+      'nonanimal': '123456',
+      'cornuted': '123456',
+    });
+  });
+
+  test('change order account posts the documented Dali fields', () async {
+    await client.changeOrderAccount(orderNo: 'ORDER-1', bindId: '5326');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.changeOrderAccount));
+    expect(request.data, {
+      'titled': 'ORDER-1',
+      'hoover': '5326',
+      'brontosauruses': '123456',
+    });
+  });
+
   test(
     'basicPersonInfo gets documented product and generated fields',
     () async {

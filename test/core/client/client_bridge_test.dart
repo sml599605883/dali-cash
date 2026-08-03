@@ -11,6 +11,28 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
+  test('requests app review through the iOS method channel', () async {
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          return null;
+        });
+
+    await ClientBridge(platform: ClientPlatform.ios).requestAppReview();
+
+    expect(calls, hasLength(1));
+    expect(calls.single.method, 'requestAppReview');
+    expect(calls.single.arguments, isNull);
+  });
+
+  test('rejects app review outside iOS', () {
+    expect(
+      () => ClientBridge(platform: ClientPlatform.android).requestAppReview(),
+      throwsA(isA<UnsupportedError>()),
+    );
+  });
+
   test('parses native platform info', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {

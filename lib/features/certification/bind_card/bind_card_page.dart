@@ -30,6 +30,13 @@ typedef BindCardSave =
     );
 typedef BindCardMessage = Future<void> Function(String message);
 typedef BindCardContinue = Future<void> Function(String productId);
+typedef BindCardChangeAccount =
+    Future<ApiResponse> Function({
+      required String orderNo,
+      required String bindId,
+    });
+typedef BindCardWebViewReplacement =
+    Future<void> Function({required String url});
 typedef BindCardRiskReport =
     Future<void> Function(String productId, int startedAtSeconds);
 typedef BindCardCameraPermissionRequester = Future<PermissionStatus> Function();
@@ -83,10 +90,14 @@ class BindCardPage extends StatefulWidget {
   const BindCardPage({
     super.key,
     this.productId = '',
+    this.orderNo = '',
+    this.isAccountChange = false,
     this.load,
     this.save,
     this.showError,
     this.continueFlow,
+    this.changeAccount,
+    this.replaceWithWebView,
     this.reportRisk,
     this.nowSeconds,
     this.requestCameraPermission,
@@ -96,10 +107,14 @@ class BindCardPage extends StatefulWidget {
   });
 
   final String productId;
+  final String orderNo;
+  final bool isAccountChange;
   final BindCardLoad? load;
   final BindCardSave? save;
   final BindCardMessage? showError;
   final BindCardContinue? continueFlow;
+  final BindCardChangeAccount? changeAccount;
+  final BindCardWebViewReplacement? replaceWithWebView;
   final BindCardRiskReport? reportRisk;
   final int Function()? nowSeconds;
   final BindCardCameraPermissionRequester? requestCameraPermission;
@@ -511,7 +526,7 @@ class _BindCardPageState extends State<BindCardPage> {
       if (response.code == 20000) {
         await _completeLiveness(group.type, fields);
       } else {
-        await _completeSuccess();
+        await _completeSuccess(response);
       }
     } catch (error) {
       if (mounted) await _showError(ApiErrorMessage.resolve(error));
@@ -569,10 +584,37 @@ class _BindCardPageState extends State<BindCardPage> {
       await _showError('Liveness verification was not accepted');
       return;
     }
-    await _completeSuccess();
+    await _completeSuccess(response);
   }
 
-  Future<void> _completeSuccess() async {
+  Future<void> _completeSuccess(ApiResponse response) async {
+    if (_isAccountChange) {
+      final orderNo = _orderNo;
+      if (orderNo.isEmpty) {
+        await _showError('Missing order information');
+        return;
+      }
+      final bindId = response.states['hoover'].stringValue.trim();
+      if (bindId.isEmpty) {
+        await _showError('Missing binding information');
+        return;
+      }
+      final changed = await (widget.changeAccount ?? _defaultChangeAccount)(
+        orderNo: orderNo,
+        bindId: bindId,
+      );
+      final url = changed
+          .ensureSuccess()
+          .states['misericorde']
+          .stringValue
+          .trim();
+      if (url.isEmpty) {
+        await _showError('Missing account change result url');
+        return;
+      }
+      await (widget.replaceWithWebView ?? _defaultReplaceWithWebView)(url: url);
+      return;
+    }
     unawaited(
       (widget.reportRisk ?? _defaultReportRisk)(_productId, _startedAtSeconds),
     );
@@ -685,6 +727,17 @@ class _BindCardPageState extends State<BindCardPage> {
     return Json(Get.arguments)['highlands'].stringValue.trim();
   }
 
+  String get _orderNo {
+    final direct = widget.orderNo.trim();
+    if (direct.isNotEmpty) return direct;
+    return Json(Get.arguments)['saggards'].stringValue.trim();
+  }
+
+  bool get _isAccountChange {
+    if (widget.isAccountChange) return true;
+    return Json(Get.arguments)['isAccountChange'].boolValue;
+  }
+
   String _fieldKey(BindCardGroup group, BindCardField field) {
     return '${group.type}:${field.saveKey}';
   }
@@ -712,6 +765,21 @@ class _BindCardPageState extends State<BindCardPage> {
       businessId: liveness.businessId,
       license: liveness.license,
     );
+  }
+
+  Future<ApiResponse> _defaultChangeAccount({
+    required String orderNo,
+    required String bindId,
+  }) {
+    return Get.find<ApiClient>().changeOrderAccount(
+      orderNo: orderNo,
+      bindId: bindId,
+    );
+  }
+
+  Future<void> _defaultReplaceWithWebView({required String url}) {
+    NavigationHelper.replaceAccountChangeFlowWithWebView<void>(url: url);
+    return Future<void>.value();
   }
 
   Future<BindCardLivenessToken> _defaultLoadToken() async {

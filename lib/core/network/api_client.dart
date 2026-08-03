@@ -95,6 +95,56 @@ class ApiClient {
     );
   }
 
+  Future<ApiResponse> productPush({
+    required String orderNo,
+    required String amount,
+    required String term,
+    required String termType,
+  }) {
+    return post(
+      ApiEndpoints.productPush,
+      data: {
+        'titled': orderNo,
+        'injective': amount,
+        'resmooth': term,
+        'mispatch': termType,
+        'gulpers': _randomDigits(6),
+        'tap': _randomDigits(6),
+        'verste': _randomDigits(6),
+        'respective': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> retryOriginalAccount({required String orderNo}) {
+    return post(ApiEndpoints.userReloan, data: {'saggards': orderNo});
+  }
+
+  Future<ApiResponse> userAccountList({required String productId}) {
+    return post(
+      ApiEndpoints.userCardList,
+      data: {
+        'highlands': productId,
+        'nonanimal': _randomDigits(6),
+        'cornuted': _randomDigits(6),
+      },
+    );
+  }
+
+  Future<ApiResponse> changeOrderAccount({
+    required String orderNo,
+    required String bindId,
+  }) {
+    return post(
+      ApiEndpoints.changeOrderAccount,
+      data: {
+        'titled': orderNo,
+        'hoover': bindId,
+        'brontosauruses': _randomDigits(6),
+      },
+    );
+  }
+
   Future<ApiResponse> basicPersonInfo({required String productId}) {
     return get(
       ApiEndpoints.basicPersonInfo,

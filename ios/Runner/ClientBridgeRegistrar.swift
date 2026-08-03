@@ -5,6 +5,7 @@ import CoreLocation
 import Darwin
 import Flutter
 import Security
+import StoreKit
 import SystemConfiguration.CaptiveNetwork
 import TDMobRisk
 import UIKit
@@ -52,6 +53,8 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
         ])
       case "getProxySettings":
         result(self.currentProxySettings())
+      case "requestAppReview":
+        self.requestAppReview(result: result)
       case "showTrustDecisionLiveness":
         self.showTrustDecisionLiveness(call.arguments, result: result)
       case "getReportLocation":
@@ -101,6 +104,24 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
       "type": "tracking_status_changed",
       "status": currentTrackingStatus()
     ])
+  }
+
+  private func requestAppReview(result: @escaping FlutterResult) {
+    DispatchQueue.main.async {
+      if #available(iOS 14.0, *) {
+        guard let scene = UIApplication.shared.connectedScenes
+          .compactMap({ $0 as? UIWindowScene })
+          .first(where: { $0.activationState == .foregroundActive })
+        else {
+          result(nil)
+          return
+        }
+        SKStoreReviewController.requestReview(in: scene)
+      } else {
+        SKStoreReviewController.requestReview()
+      }
+      result(nil)
+    }
   }
 
   private func getReportLocation(_ result: @escaping FlutterResult) {

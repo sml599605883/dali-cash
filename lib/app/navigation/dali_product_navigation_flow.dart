@@ -6,8 +6,11 @@ typedef DaliMessageAction = Future<void> Function(String message);
 typedef DaliRawTargetAction =
     Future<void> Function(String target, Object? arguments);
 typedef DaliProductDetailAction =
-    Future<void> Function(ProductDetailData detail);
+    Future<bool> Function(ProductDetailData detail);
 typedef DaliAccessChecker = Future<bool> Function();
+typedef DaliLogger = void Function(String message);
+typedef DaliProductRedirectReporter =
+    void Function(String productId, String orderNo);
 
 class DaliProductNavigationFlow {
   const DaliProductNavigationFlow({
@@ -21,6 +24,8 @@ class DaliProductNavigationFlow {
     required this.ensureLocationAccess,
     required this.navigateRawTarget,
     required this.handleProductDetail,
+    required this.logger,
+    required this.reportProductRedirect,
   });
 
   final ApiClient apiClient;
@@ -33,6 +38,8 @@ class DaliProductNavigationFlow {
   final DaliAccessChecker ensureLocationAccess;
   final DaliRawTargetAction navigateRawTarget;
   final DaliProductDetailAction handleProductDetail;
+  final DaliLogger logger;
+  final DaliProductRedirectReporter reportProductRedirect;
 
   Future<void> apply(String productId, {String source = '0'}) async {
     final normalizedProductId = productId.trim();
@@ -100,6 +107,45 @@ class DaliProductNavigationFlow {
     await apiClient.config.sessionStore.saveProductDetailOrderNo(
       detail.product.orderNo,
     );
-    await handleProductDetail(detail);
+    if (await handleProductDetail(detail)) {
+      return;
+    }
+    if (detail.statusCode != 200) {
+      logger(
+        'product detail continuation unavailable: '
+        'status=${detail.statusCode}, productId=${detail.product.productId.trim()}',
+      );
+      return;
+    }
+
+    final orderNo = detail.product.orderNo.trim();
+    if (orderNo.isEmpty) {
+      logger(
+        'product detail continuation is missing order number: '
+        'productId=${detail.product.productId.trim()}',
+      );
+      return;
+    }
+
+    final redirect = await apiClient.productPush(
+      orderNo: orderNo,
+      amount: detail.product.amount.trim(),
+      term: detail.product.term.trim(),
+      termType: '${detail.product.termType}',
+    );
+    final resolvedProductId = detail.product.productId.trim().isNotEmpty
+        ? detail.product.productId.trim()
+        : productId.trim();
+    reportProductRedirect(resolvedProductId, orderNo);
+
+    final rawTarget = redirect.states['millipede'].stringValue.trim();
+    if (rawTarget.isEmpty) {
+      logger(
+        'product detail order continuation returned an empty target: '
+        'productId=$resolvedProductId, orderNo=$orderNo',
+      );
+      return;
+    }
+    await navigateRawTarget(rawTarget, redirect.states.rawMapValue);
   }
 }

@@ -12,6 +12,13 @@ PODS:
     - Flutter
     - SDWebImage
     - SDWebImageWebPCoder
+  - flutter_inappwebview_ios (0.0.1):
+    - Flutter
+    - flutter_inappwebview_ios/Core (= 0.0.1)
+    - OrderedSet (~> 6.0.3)
+  - flutter_inappwebview_ios/Core (0.0.1):
+    - Flutter
+    - OrderedSet (~> 6.0.3)
   - flutter_native_contact_picker (0.0.12):
     - Flutter
   - image_picker_ios (0.0.1):
@@ -28,6 +35,7 @@ PODS:
   - libwebp/sharpyuv (1.5.0)
   - libwebp/webp (1.5.0):
     - libwebp/sharpyuv
+  - OrderedSet (6.0.3)
   - package_info_plus (0.4.5):
     - Flutter
   - permission_handler_apple (9.4.8):
@@ -49,11 +57,14 @@ PODS:
   - TrustDecisionPro/FMDeviceManagerFramework (5.2.5.1)
   - TrustDecisionPro/TDCorePlugin (5.2.5.1)
   - TrustDecisionPro/TDMobRisk (5.2.5.1)
+  - url_launcher_ios (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - adjust_sdk (from `.symlinks/plugins/adjust_sdk/ios`)
   - Flutter (from `Flutter`)
   - flutter_image_compress_common (from `.symlinks/plugins/flutter_image_compress_common/ios`)
+  - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
   - flutter_native_contact_picker (from `.symlinks/plugins/flutter_native_contact_picker/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
@@ -61,12 +72,14 @@ DEPENDENCIES:
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - TrustDecisionLiveness (= 3.1.2)
   - TrustDecisionPro (= 5.2.5.1)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
   trunk:
     - Adjust
     - AdjustSignature
     - libwebp
+    - OrderedSet
     - SDWebImage
     - SDWebImageWebPCoder
     - TrustDecisionLiveness
@@ -79,6 +92,8 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_image_compress_common:
     :path: ".symlinks/plugins/flutter_image_compress_common/ios"
+  flutter_inappwebview_ios:
+    :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
   flutter_native_contact_picker:
     :path: ".symlinks/plugins/flutter_native_contact_picker/ios"
   image_picker_ios:
@@ -89,6 +104,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
   Adjust: 3fbf26d0880cb25d15653d68278c0c8771718458
@@ -96,9 +113,11 @@ SPEC CHECKSUMS:
   AdjustSignature: 9498705a4ac67b719e31828be4d74fbb8656950c
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_image_compress_common: d1d827ee42025290fc9e3203ece582e4c74182ed
+  flutter_inappwebview_ios: 6f63631e2c62a7c350263b13fa5427aedefe81d4
   flutter_native_contact_picker: 326c7b69d06461907c9f8e3e0ae089e91deb3595
   image_picker_ios: 4f2f91b01abdb52842a8e277617df877e40f905b
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
+  OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
   package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
   permission_handler_apple: ee2fe0fd04551b304eb002714ff067c371c822ed
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
@@ -106,6 +125,7 @@ SPEC CHECKSUMS:
   shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
   TrustDecisionLiveness: 492414d0e14dad958478d2b56ee6f2ec393cd161
   TrustDecisionPro: 43c5ba6de6f53e1a4132442d82e116b5c91df9bf
+  url_launcher_ios: bb13df5870e8c4234ca12609d04010a21be43dfa
 
 PODFILE CHECKSUM: 33a724cb38ea43e68716f3e41b562ab6b751dd83
 

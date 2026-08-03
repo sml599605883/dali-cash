@@ -1,13 +1,16 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/permissions/permission_coordinator.dart';
+import '../../core/report/dali_report_service.dart';
 import '../../features/product_detail/product_detail_data.dart';
 import '../routes/app_routes.dart';
 import 'dali_deep_link.dart';
@@ -27,15 +30,24 @@ typedef PermissionPromptPresenter =
       required String cancelText,
       required String confirmText,
     });
+typedef ProductRedirectReporter =
+    void Function({required String productId, required String orderNo});
+typedef ExternalUriLauncher = Future<bool> Function(Uri uri);
 
 abstract final class NavigationHelper {
   static const _deepLinkParser = DaliDeepLinkParser();
   static const Map<String, String> _productDetailSteps = <String, String>{
+    'public': 'identity',
     'LancerPredacities': 'identity',
+    'face': 'face',
     'CilantroCountermemo': 'face',
+    'personal': 'personal',
     'PermafrostsPalfreys': 'personal',
+    'work': 'work',
     'DeviouslyTressours': 'work',
+    'ext': 'ext',
     'TrotlineScootches': 'ext',
+    'bank': 'bank',
     'MolehillSubconscious': 'bank',
   };
 
@@ -50,6 +62,9 @@ abstract final class NavigationHelper {
   static PermissionPromptPresenter permissionPromptPresenter =
       defaultPermissionPromptPresenter;
   static AppSettingsOpener appSettingsOpener = defaultAppSettingsOpener;
+  static ProductRedirectReporter productRedirectReporter =
+      defaultProductRedirectReporter;
+  static ExternalUriLauncher externalUriLauncher = defaultExternalUriLauncher;
 
   static Future<void> defaultLoadingPresenter() {
     return EasyLoading.show(status: 'Loading...');
@@ -116,6 +131,30 @@ abstract final class NavigationHelper {
 
   static Future<bool> defaultAppSettingsOpener() {
     return openAppSettings();
+  }
+
+  static Future<bool> defaultExternalUriLauncher(Uri uri) {
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  static Future<bool> openExternalUri(Uri uri) {
+    return externalUriLauncher(uri);
+  }
+
+  static void defaultProductRedirectReporter({
+    required String productId,
+    required String orderNo,
+  }) {
+    final reporter = DaliReportService.current;
+    if (reporter == null) return;
+    unawaited(
+      reporter.reportRisk(
+        productId: productId,
+        scene: '9',
+        orderNo: orderNo,
+        startedAtSeconds: DaliReportService.nowSeconds(),
+      ),
+    );
   }
 
   static void back<T extends Object?>({T? result}) {
@@ -212,13 +251,68 @@ abstract final class NavigationHelper {
     return Future<T?>.value();
   }
 
-  static Future<T?>? toBindCard<T extends Object?>({String productId = ''}) {
+  static Future<T?>? toBindCard<T extends Object?>({
+    String productId = '',
+    String orderNo = '',
+    bool isAccountChange = false,
+  }) {
     if (Get.currentRoute == AppRoutes.bindCard) return null;
-    Get.toNamed<T>(
-      AppRoutes.bindCard,
-      arguments: {'highlands': productId.trim()},
-    );
+    final arguments = <String, dynamic>{'highlands': productId.trim()};
+    if (isAccountChange) {
+      arguments.addAll({'saggards': orderNo.trim(), 'isAccountChange': true});
+    }
+    Get.toNamed<T>(AppRoutes.bindCard, arguments: arguments);
     return Future<T?>.value();
+  }
+
+  static Future<T?>? toAccountList<T extends Object?>({
+    required String productId,
+    required String orderNo,
+  }) {
+    if (Get.currentRoute == AppRoutes.accountList) return null;
+    return Get.toNamed<T>(
+      AppRoutes.accountList,
+      arguments: {'highlands': productId.trim(), 'saggards': orderNo.trim()},
+    );
+  }
+
+  static Future<T?>? toWebView<T extends Object?>({
+    required String url,
+    String? title,
+  }) {
+    final uri = _webUri(url);
+    if (uri == null) {
+      logger('invalid WebView URL: $url');
+      return null;
+    }
+    return Get.toNamed<T>(
+      AppRoutes.webView,
+      arguments: {'url': uri.toString(), 'title': title},
+    );
+  }
+
+  static Future<T?>? replaceWebView<T extends Object?>({
+    required String url,
+    String? title,
+    bool removeBindCard = false,
+  }) {
+    final uri = _webUri(url);
+    if (uri == null) {
+      logger('invalid WebView replacement URL: $url');
+      return null;
+    }
+    var removedWebView = false;
+    return Get.offNamedUntil<T>(AppRoutes.webView, (route) {
+      final name = route.settings.name;
+      if (removeBindCard && name == AppRoutes.bindCard) {
+        return false;
+      }
+      if (!removedWebView && name == AppRoutes.webView) {
+        removedWebView = true;
+        return false;
+      }
+      return true;
+    }, arguments: {'url': uri.toString(), 'title': title});
   }
 
   static Future<T?>? replaceAccountChangeFlowWithWebView<T extends Object?>({
@@ -307,7 +401,7 @@ abstract final class NavigationHelper {
         logger('raw target route not available: ${target.alias}');
         return;
       case DaliDeepLinkKind.webView:
-        logger('WebView deferred for raw target: ${target.alias}');
+        toWebView<void>(url: target.uri?.toString() ?? target.alias);
         return;
       case DaliDeepLinkKind.unsupportedDali:
         logger('unsupported Dali app target: ${target.alias}');
@@ -316,6 +410,16 @@ abstract final class NavigationHelper {
         logger('unsupported raw target: ${target.alias}');
         return;
     }
+  }
+
+  static Uri? _webUri(String value) {
+    final uri = Uri.tryParse(value.trim());
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty) {
+      return null;
+    }
+    return uri;
   }
 
   static DaliProductNavigationFlow _productFlow(ApiClient apiClient) {
@@ -332,6 +436,10 @@ abstract final class NavigationHelper {
         return navigateRawTarget(target, arguments: arguments);
       },
       handleProductDetail: _handleProductDetail,
+      logger: logger,
+      reportProductRedirect: (productId, orderNo) {
+        productRedirectReporter(productId: productId, orderNo: orderNo);
+      },
     );
   }
 
@@ -360,10 +468,10 @@ abstract final class NavigationHelper {
     return false;
   }
 
-  static Future<void> _handleProductDetail(ProductDetailData detail) async {
+  static Future<bool> _handleProductDetail(ProductDetailData detail) async {
     final type = detail.nextStep.type.trim();
     if (type.isEmpty) {
-      return;
+      return false;
     }
     final step = _productDetailSteps[type];
     if (step == null) {
@@ -371,7 +479,7 @@ abstract final class NavigationHelper {
         'product detail next step not available: '
         'type=$type, title=${detail.nextStep.title.trim()}',
       );
-      return;
+      return true;
     }
 
     final productId = detail.product.productId.trim();
@@ -383,7 +491,7 @@ abstract final class NavigationHelper {
         step == 'bank') {
       if (productId.isEmpty) {
         logger('product detail $step target is missing highlands');
-        return;
+        return true;
       }
       switch (step) {
         case 'identity':
@@ -399,12 +507,13 @@ abstract final class NavigationHelper {
         case 'bank':
           await toBindCard<void>(productId: productId);
       }
-      return;
+      return true;
     }
 
     logger(
       'product detail step recognized but page not available: '
       'step=$step, type=$type, productId=$productId',
     );
+    return true;
   }
 }
