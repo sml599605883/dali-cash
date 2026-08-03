@@ -133,7 +133,7 @@ class _CertificationSelectionSheetState<T>
                         shape: const RoundedRectangleBorder(),
                       ),
                       child: const Text(
-                        'done',
+                        'Done',
                         style: TextStyle(
                           color: AppColors.dialogQuit,
                           fontSize: 16,

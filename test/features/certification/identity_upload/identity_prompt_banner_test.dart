@@ -18,11 +18,11 @@ void main() {
     expect(find.byType(IdentityPromptBanner), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('identityPromptBanner'))).width,
-      343,
+      375,
     );
   });
 
-  testWidgets('scales its horizontal screen margin on wider screens', (
+  testWidgets('fills the available width on wider screens', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(750, 1624);
@@ -37,7 +37,7 @@ void main() {
 
     expect(
       tester.getSize(find.byKey(const Key('identityPromptBanner'))).width,
-      686,
+      750,
     );
   });
 }

@@ -86,7 +86,7 @@ void main() {
     );
 
     expect(find.byKey(const Key('certificationSelectionDone')), findsOneWidget);
-    expect(find.text('done'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('certificationSelectionDone')));
     await tester.pumpAndSettle();
