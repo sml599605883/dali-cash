@@ -26,6 +26,19 @@ bool shouldCloseDaliWebView({required bool canGoBack}) => !canGoBack;
 bool shouldShowDaliWebViewLoadError({required bool? isForMainFrame}) =>
     isForMainFrame == true;
 
+bool shouldShowDaliWebViewLoading({
+  required bool loading,
+  required int progress,
+}) => loading && progress < 100;
+
+String resolveDaliWebViewTitle({
+  required String? pageTitle,
+  required String fallback,
+}) {
+  final value = pageTitle?.trim() ?? '';
+  return value.isNotEmpty ? value : fallback.trim();
+}
+
 bool canUseDaliWebViewController({
   required bool mounted,
   required Object? activeController,
@@ -153,9 +166,10 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _title = widget.initialTitle?.trim().isNotEmpty == true
-        ? widget.initialTitle!.trim()
-        : 'Details';
+    _title = resolveDaliWebViewTitle(
+      pageTitle: widget.initialTitle,
+      fallback: 'Details',
+    );
     _bridgeGate = DaliWebViewBridgeGate(
       addHandler: (value) {
         (value as InAppWebViewController).addJavaScriptHandler(
@@ -403,9 +417,26 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
                         });
                       }
                     },
-                    onLoadStop: (controller, url) {
+                    onLoadStop: (controller, url) async {
                       if (mounted && identical(_controller, controller)) {
-                        setState(() => _loading = false);
+                        final title = await controller.getTitle();
+                        if (!mounted || !identical(_controller, controller)) {
+                          return;
+                        }
+                        setState(() {
+                          _loading = false;
+                          _title = resolveDaliWebViewTitle(
+                            pageTitle: title,
+                            fallback: _title,
+                          );
+                        });
+                      }
+                    },
+                    onProgressChanged: (controller, progress) {
+                      if (mounted && identical(_controller, controller)) {
+                        setState(() {
+                          _loading = progress < 100;
+                        });
                       }
                     },
                     onReceivedError: (controller, request, error) {

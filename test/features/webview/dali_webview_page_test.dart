@@ -119,6 +119,30 @@ void main() {
     expect(shouldShowDaliWebViewLoadError(isForMainFrame: null), isFalse);
   });
 
+  test('hides the loading indicator when WebView progress reaches 100', () {
+    expect(shouldShowDaliWebViewLoading(loading: true, progress: 99), isTrue);
+    expect(shouldShowDaliWebViewLoading(loading: true, progress: 100), isFalse);
+    expect(shouldShowDaliWebViewLoading(loading: false, progress: 20), isFalse);
+  });
+
+  test('uses the loaded document title and keeps the fallback when empty', () {
+    expect(
+      resolveDaliWebViewTitle(
+        pageTitle: '  Loan status  ',
+        fallback: 'Details',
+      ),
+      'Loan status',
+    );
+    expect(
+      resolveDaliWebViewTitle(pageTitle: ' ', fallback: 'Details'),
+      'Details',
+    );
+    expect(
+      resolveDaliWebViewTitle(pageTitle: null, fallback: 'Details'),
+      'Details',
+    );
+  });
+
   test('account availability follows Dali clingiest rows', () {
     expect(
       hasDaliWebViewAccounts(
@@ -181,6 +205,8 @@ void main() {
     expect(source, contains('isAccountChange: true'));
     expect(source, contains('PermissionResponseAction.DENY'));
     expect(source, contains('MixedContentMode.MIXED_CONTENT_NEVER_ALLOW'));
+    expect(source, contains('onProgressChanged'));
+    expect(source, contains('controller.getTitle()'));
     expect(source, contains('confirm retention popup is not available'));
   });
 }
