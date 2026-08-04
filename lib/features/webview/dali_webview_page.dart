@@ -410,7 +410,7 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
                       );
                     },
                     onLoadStart: (controller, url) {
-                      if (mounted && identical(_controller, controller)) {
+                      if (mounted) {
                         setState(() {
                           _loading = true;
                           _loadFailed = false;
@@ -418,11 +418,9 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
                       }
                     },
                     onLoadStop: (controller, url) async {
-                      if (mounted && identical(_controller, controller)) {
+                      if (mounted) {
                         final title = await controller.getTitle();
-                        if (!mounted || !identical(_controller, controller)) {
-                          return;
-                        }
+                        if (!mounted) return;
                         setState(() {
                           _loading = false;
                           _title = resolveDaliWebViewTitle(
@@ -433,7 +431,7 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
                       }
                     },
                     onProgressChanged: (controller, progress) {
-                      if (mounted && identical(_controller, controller)) {
+                      if (mounted) {
                         setState(() {
                           _loading = progress < 100;
                         });
@@ -441,7 +439,6 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
                     },
                     onReceivedError: (controller, request, error) {
                       if (mounted &&
-                          identical(_controller, controller) &&
                           shouldShowDaliWebViewLoadError(
                             isForMainFrame: request.isForMainFrame,
                           )) {
@@ -453,9 +450,7 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
                     },
                     onTitleChanged: (controller, title) {
                       final value = title?.trim() ?? '';
-                      if (mounted &&
-                          identical(_controller, controller) &&
-                          value.isNotEmpty) {
+                      if (mounted && value.isNotEmpty) {
                         setState(() => _title = value);
                       }
                     },
