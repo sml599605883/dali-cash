@@ -152,6 +152,20 @@ class ApiClient {
     );
   }
 
+  Future<ApiResponse> retentionPopup({
+    required String type,
+    required String productId,
+  }) {
+    return post(
+      ApiEndpoints.retentionDialog,
+      data: {
+        'omegas': type.trim(),
+        'thunderstruck': productId.trim(),
+        'jawlines': _randomDigits(6),
+      },
+    );
+  }
+
   Future<ApiResponse> basicPersonInfo({required String productId}) {
     return get(
       ApiEndpoints.basicPersonInfo,

@@ -177,6 +177,23 @@ void main() {
     });
   });
 
+  test('retention popup posts trimmed fields and six-digit nonce', () async {
+    await client.retentionPopup(
+      type: '  certification_exit  ',
+      productId: '  product-42  ',
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.retentionDialog));
+    expect(request.data, {
+      'omegas': 'certification_exit',
+      'thunderstruck': 'product-42',
+      'jawlines': '123456',
+    });
+    expect(request.data['jawlines'], matches(RegExp(r'^\d{6}$')));
+  });
+
   test(
     'basicPersonInfo gets documented product and generated fields',
     () async {
