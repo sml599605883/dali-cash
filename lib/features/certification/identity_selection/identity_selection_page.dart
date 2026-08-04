@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../../app/layout/screen_adapter.dart';
 import '../../../app/resources/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
+import '../widgets/certification_retention_guard.dart';
 import 'identity_selection_controller.dart';
 
 class IdentitySelectionPage extends GetView<IdentitySelectionController> {
@@ -13,20 +14,31 @@ class IdentitySelectionPage extends GetView<IdentitySelectionController> {
   @override
   Widget build(BuildContext context) {
     ScreenAdapter.init(context);
+    final onBack = CertificationRetentionGuard.backHandler(
+      type: '0',
+      productId: controller.productId,
+      onDefaultBack: Get.back<void>,
+    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: AppColors.pageBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              const _IdentityHeader(),
-              Expanded(
-                child: GetBuilder<IdentitySelectionController>(
-                  builder: _buildContent,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) onBack();
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _IdentityHeader(onBack: onBack),
+                Expanded(
+                  child: GetBuilder<IdentitySelectionController>(
+                    builder: _buildContent,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -84,7 +96,9 @@ class IdentitySelectionPage extends GetView<IdentitySelectionController> {
 }
 
 class _IdentityHeader extends StatelessWidget {
-  const _IdentityHeader();
+  const _IdentityHeader({required this.onBack});
+
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +113,7 @@ class _IdentityHeader extends StatelessWidget {
               button: true,
               label: 'Back',
               child: InkWell(
-                onTap: Get.back<void>,
+                onTap: onBack,
                 child: Padding(
                   padding: EdgeInsets.all(ScreenAdapter.width(8)),
                   child: Image.asset(

@@ -20,6 +20,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/report/dali_report_service.dart';
 import '../widgets/identity_prompt_banner.dart';
+import '../widgets/certification_retention_guard.dart';
 
 typedef IdentityFaceLogger = void Function(String message);
 typedef IdentityFaceCameraPermissionRequester =
@@ -113,74 +114,87 @@ class _IdentityFacePageState extends State<IdentityFacePage> {
         widget.apiClient ??
         (Get.isRegistered<ApiClient>() ? Get.find<ApiClient>() : null);
     final prompt = client?.config.sessionStore.productDetailFacePrompt() ?? '';
+    final onBack = CertificationRetentionGuard.backHandler(
+      type: '1',
+      productId: resolvedProductId,
+      onDefaultBack: Get.back<void>,
+    );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: AppColors.pageBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              const _IdentityFaceHeader(),
-              SizedBox(height: ScreenAdapter.height(10)),
-              IdentityPromptBanner(
-                message: prompt.isEmpty
-                    ? IdentityFacePage.defaultPromptMessage
-                    : prompt,
-              ),
-              SizedBox(height: ScreenAdapter.height(12)),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: ScreenAdapter.width(16),
-                  ),
-                  child: Image.asset(
-                    key: const Key('identityFaceDemo'),
-                    AppAssets.identityFaceVerificationDemo,
-                    width: ScreenAdapter.width(343),
-                    height: ScreenAdapter.height(429),
-                    fit: BoxFit.fill,
-                    semanticLabel: 'Face verification demonstration examples',
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) onBack();
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _IdentityFaceHeader(onBack: onBack),
+                SizedBox(height: ScreenAdapter.height(10)),
+                IdentityPromptBanner(
+                  message: prompt.isEmpty
+                      ? IdentityFacePage.defaultPromptMessage
+                      : prompt,
+                ),
+                SizedBox(height: ScreenAdapter.height(12)),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: ScreenAdapter.width(16),
+                    ),
+                    child: Image.asset(
+                      key: const Key('identityFaceDemo'),
+                      AppAssets.identityFaceVerificationDemo,
+                      width: ScreenAdapter.width(343),
+                      height: ScreenAdapter.height(429),
+                      fit: BoxFit.fill,
+                      semanticLabel: 'Face verification demonstration examples',
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              ScreenAdapter.width(16),
-              0,
-              ScreenAdapter.width(16),
-              ScreenAdapter.height(20),
+              ],
             ),
-            child: SizedBox(
-              height: ScreenAdapter.height(46),
-              child: ElevatedButton(
-                key: const Key('identityFaceUploadButton'),
-                onPressed: _isSubmitting
-                    ? null
-                    : () => _submit(
-                        productId: resolvedProductId,
-                        cardType: resolvedCardType,
+          ),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                ScreenAdapter.width(16),
+                0,
+                ScreenAdapter.width(16),
+                ScreenAdapter.height(20),
+              ),
+              child: SizedBox(
+                height: ScreenAdapter.height(46),
+                child: ElevatedButton(
+                  key: const Key('identityFaceUploadButton'),
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => _submit(
+                          productId: resolvedProductId,
+                          cardType: resolvedCardType,
+                        ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.surface,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        ScreenAdapter.width(8),
                       ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.surface,
-                  elevation: 0,
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(ScreenAdapter.width(8)),
+                    ),
                   ),
-                ),
-                child: Text(
-                  'Upload',
-                  style: TextStyle(
-                    color: AppColors.surface,
-                    fontSize: ScreenAdapter.font(16),
-                    fontWeight: FontWeight.w700,
-                    height: 19 / 16,
+                  child: Text(
+                    'Upload',
+                    style: TextStyle(
+                      color: AppColors.surface,
+                      fontSize: ScreenAdapter.font(16),
+                      fontWeight: FontWeight.w700,
+                      height: 19 / 16,
+                    ),
                   ),
                 ),
               ),
@@ -280,11 +294,13 @@ class _IdentityFacePageState extends State<IdentityFacePage> {
       );
       unawaited(
         (widget.reportRiskScene ??
-            (startTimeSeconds) => DaliReportService.current?.reportRisk(
-              productId: productId,
-              scene: '4',
-              startedAtSeconds: startTimeSeconds,
-            ) ?? Future<void>.value())(riskStartTime),
+            (startTimeSeconds) =>
+                DaliReportService.current?.reportRisk(
+                  productId: productId,
+                  scene: '4',
+                  startedAtSeconds: startTimeSeconds,
+                ) ??
+                Future<void>.value())(riskStartTime),
       );
       await widget.dismissLoading();
       if (!mounted) return;
@@ -397,7 +413,9 @@ Future<void> _defaultContinueProductDetailFlow(String productId) {
 }
 
 class _IdentityFaceHeader extends StatelessWidget {
-  const _IdentityFaceHeader();
+  const _IdentityFaceHeader({required this.onBack});
+
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -412,7 +430,7 @@ class _IdentityFaceHeader extends StatelessWidget {
               button: true,
               label: 'Back',
               child: InkWell(
-                onTap: Get.back<void>,
+                onTap: onBack,
                 child: Padding(
                   padding: EdgeInsets.all(ScreenAdapter.width(8)),
                   child: Image.asset(

@@ -17,6 +17,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/report/dali_report_service.dart';
 import '../widgets/certification_selection_sheet.dart';
 import '../widgets/identity_prompt_banner.dart';
+import '../widgets/certification_retention_guard.dart';
 import 'emergency_contact_data.dart';
 
 typedef EmergencyContactLoad =
@@ -87,36 +88,47 @@ class _EmergencyContactPageState extends State<EmergencyContactPage> {
   @override
   Widget build(BuildContext context) {
     ScreenAdapter.init(context);
+    final onBack = CertificationRetentionGuard.backHandler(
+      type: '4',
+      productId: _productId(),
+      onDefaultBack: NavigationHelper.back,
+    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: AppColors.pageBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _Header(onBack: NavigationHelper.back),
-              SizedBox(height: ScreenAdapter.height(10)),
-              IdentityPromptBanner(message: _prompt),
-              SizedBox(height: ScreenAdapter.height(12)),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: EdgeInsets.only(left: ScreenAdapter.width(24)),
-                  child: Image.asset(
-                    AppAssets.emergencyContactProgress,
-                    key: const Key('emergencyContactProgress'),
-                    width: ScreenAdapter.width(108),
-                    height: ScreenAdapter.height(48),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) onBack();
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _Header(onBack: onBack),
+                SizedBox(height: ScreenAdapter.height(10)),
+                IdentityPromptBanner(message: _prompt),
+                SizedBox(height: ScreenAdapter.height(12)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: ScreenAdapter.width(24)),
+                    child: Image.asset(
+                      AppAssets.emergencyContactProgress,
+                      key: const Key('emergencyContactProgress'),
+                      width: ScreenAdapter.width(108),
+                      height: ScreenAdapter.height(48),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                    ),
                   ),
                 ),
-              ),
-              Expanded(child: _buildContent()),
-            ],
+                Expanded(child: _buildContent()),
+              ],
+            ),
           ),
+          bottomNavigationBar: _buildFooter(),
         ),
-        bottomNavigationBar: _buildFooter(),
       ),
     );
   }

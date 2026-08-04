@@ -15,6 +15,7 @@ import '../../../core/report/dali_report_service.dart';
 import '../widgets/certification_address_selection_sheet.dart';
 import '../widgets/certification_payday_selection_sheet.dart';
 import '../widgets/certification_selection_sheet.dart';
+import '../widgets/certification_retention_guard.dart';
 import '../widgets/identity_prompt_banner.dart';
 import '../personal_information/personal_information_data.dart';
 
@@ -100,65 +101,77 @@ class _CertificationInformationPageState
   @override
   Widget build(BuildContext context) {
     ScreenAdapter.init(context);
+    final onBack = CertificationRetentionGuard.backHandler(
+      type: widget.riskScene == '6' ? '3' : '2',
+      productId: _productId(),
+      onDefaultBack: Get.back<void>,
+    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: Scaffold(
-          backgroundColor: AppColors.pageBackground,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _CertificationInformationHeader(
-                  title: widget.title,
-                  keyPrefix: widget.keyPrefix,
-                ),
-                SizedBox(height: ScreenAdapter.height(10)),
-                IdentityPromptBanner(message: _prompt),
-                SizedBox(height: ScreenAdapter.height(12)),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: ScreenAdapter.width(24)),
-                    child: Image.asset(
-                      widget.progressAsset,
-                      key: Key('${widget.keyPrefix}Progress'),
-                      width: ScreenAdapter.width(108),
-                      height: ScreenAdapter.height(48),
-                      alignment: Alignment.topCenter,
-                      fit: BoxFit.cover,
-                    ),
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) onBack();
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: Scaffold(
+            backgroundColor: AppColors.pageBackground,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _CertificationInformationHeader(
+                    title: widget.title,
+                    keyPrefix: widget.keyPrefix,
+                    onBack: onBack,
                   ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      ScreenAdapter.width(16),
-                      0,
-                      ScreenAdapter.width(16),
-                      ScreenAdapter.height(8),
-                    ),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(
-                          ScreenAdapter.width(12),
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          ScreenAdapter.width(12),
-                        ),
-                        child: _buildContent(),
+                  SizedBox(height: ScreenAdapter.height(10)),
+                  IdentityPromptBanner(message: _prompt),
+                  SizedBox(height: ScreenAdapter.height(12)),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: ScreenAdapter.width(24)),
+                      child: Image.asset(
+                        widget.progressAsset,
+                        key: Key('${widget.keyPrefix}Progress'),
+                        width: ScreenAdapter.width(108),
+                        height: ScreenAdapter.height(48),
+                        alignment: Alignment.topCenter,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        ScreenAdapter.width(16),
+                        0,
+                        ScreenAdapter.width(16),
+                        ScreenAdapter.height(8),
+                      ),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(
+                            ScreenAdapter.width(12),
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            ScreenAdapter.width(12),
+                          ),
+                          child: _buildContent(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            bottomNavigationBar: _buildFooter(),
           ),
-          bottomNavigationBar: _buildFooter(),
         ),
       ),
     );
@@ -468,10 +481,12 @@ class _CertificationInformationHeader extends StatelessWidget {
   const _CertificationInformationHeader({
     required this.title,
     required this.keyPrefix,
+    required this.onBack,
   });
 
   final String title;
   final String keyPrefix;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +499,7 @@ class _CertificationInformationHeader extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: IconButton(
               key: Key('${keyPrefix}Back'),
-              onPressed: Get.back,
+              onPressed: onBack,
               padding: EdgeInsets.only(left: ScreenAdapter.width(16)),
               alignment: Alignment.centerLeft,
               icon: Image.asset(
