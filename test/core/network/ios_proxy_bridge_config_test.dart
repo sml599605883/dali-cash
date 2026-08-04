@@ -52,6 +52,51 @@ void main() {
     expect(appDelegate, isNot(contains('https://www.apple.com')));
   });
 
+  test('iOS collects complete Dali device report values natively', () {
+    final collectorFile = File(
+      'ios/Runner/DaliDeviceSnapshotCollector.swift',
+    );
+    final collector = collectorFile.existsSync()
+        ? collectorFile.readAsStringSync()
+        : '';
+    final registrar = File(
+      'ios/Runner/ClientBridgeRegistrar.swift',
+    ).readAsStringSync();
+    final project = File(
+      'ios/Runner.xcodeproj/project.pbxproj',
+    ).readAsStringSync();
+    final entitlements = File(
+      'ios/Runner/Runner.entitlements',
+    ).readAsStringSync();
+
+    expect(collectorFile.existsSync(), isTrue);
+    expect(collector, contains('import CoreTelephony'));
+    expect(collector, contains('import NetworkExtension'));
+    expect(collector, contains('SCNetworkReachabilityGetFlags'));
+    expect(collector, contains('serviceCurrentRadioAccessTechnology'));
+    expect(collector, contains('serviceSubscriberCellularProviders'));
+    expect(collector, contains('NEHotspotNetwork.fetchCurrent'));
+    expect(collector, contains('CNCopyCurrentNetworkInfo'));
+    expect(collector, contains('getifaddrs'));
+    expect(collector, contains('host_statistics64'));
+    expect(collector, contains('DYLD_INSERT_LIBRARIES'));
+    for (final label in ['WIFI', '2G', '3G', '4G', '5G', 'OTHER']) {
+      expect(collector, contains('"$label"'));
+    }
+    expect(registrar, contains('DaliDeviceSnapshotCollector'));
+    expect(registrar, contains('deviceSnapshotCollector.collect('));
+    expect(registrar, isNot(contains('"isUsingVpn": 0')));
+    expect(registrar, isNot(contains('"carrier": ""')));
+    expect(registrar, isNot(contains('"networkType": "OTHER"')));
+    expect(registrar, isNot(contains('"innerIp": ""')));
+    expect(registrar, isNot(contains('"availableMemory": "0"')));
+    expect(project, contains('DaliDeviceSnapshotCollector.swift in Sources'));
+    expect(
+      entitlements,
+      contains('com.apple.developer.networking.wifi-info'),
+    );
+  });
+
   test('iOS initializes pinned TDMobRisk dependencies during startup', () {
     final podfile = File('ios/Podfile').readAsStringSync();
     final registrar = File(

@@ -6,7 +6,6 @@ import Darwin
 import Flutter
 import Security
 import StoreKit
-import SystemConfiguration.CaptiveNetwork
 import TDMobRisk
 import UIKit
 
@@ -16,6 +15,7 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
   private let trustDecisionPartnerCode = "boqin_ph"
   private let trustDecisionPartnerKey = "1dc25522f2adc77f5347816c0f7fa31b"
   private lazy var trustDecisionManager = TDMobRiskManager.sharedManager()
+  private let deviceSnapshotCollector = DaliDeviceSnapshotCollector()
   private var hasConfiguredTrustDecision = false
   private var eventSink: FlutterEventSink?
   private var locationManager: CLLocationManager?
@@ -60,7 +60,14 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
       case "getReportLocation":
         self.getReportLocation(result)
       case "getReportDeviceSnapshot":
-        result(self.currentDeviceSnapshot())
+        self.deviceSnapshotCollector.collect(
+          idfv: self.stableVendorIdentifier(),
+          idfa: self.currentAdvertisingIdentifier(),
+          pushToken: self.pushToken,
+          isUsingProxy: (self.currentProxySettings()["enabled"] as? Bool) == true,
+          modelIdentifier: self.deviceModelName(),
+          completion: { snapshot in result(snapshot) }
+        )
       case "getPushToken":
         result(self.pushToken)
       case "getTrackingStatus":
@@ -241,98 +248,12 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     }
   }
 
-  private func currentDeviceSnapshot() -> [String: Any] {
-    UIDevice.current.isBatteryMonitoringEnabled = true
-    let batteryLevel = UIDevice.current.batteryLevel < 0
-      ? 0
-      : Int(UIDevice.current.batteryLevel * 100)
-    let isCharging = UIDevice.current.batteryState == .charging
-      || UIDevice.current.batteryState == .full
-    let bounds = UIScreen.main.nativeBounds
-    let fileAttributes = try? FileManager.default.attributesOfFileSystem(
-      forPath: NSHomeDirectory()
-    )
-    let totalStorage = (fileAttributes?[.systemSize] as? NSNumber)?.stringValue ?? "0"
-    let availableStorage = (fileAttributes?[.systemFreeSize] as? NSNumber)?.stringValue ?? "0"
-    let wifi = currentWifiInfo()
-    let proxy = currentProxySettings()
-    let idfv = stableVendorIdentifier()
-    let idfa: String
+  private func currentAdvertisingIdentifier() -> String {
     if #available(iOS 14, *), ATTrackingManager.trackingAuthorizationStatus == .authorized {
-      idfa = ASIdentifierManager.shared().advertisingIdentifier.uuidString
-    } else {
-      idfa = ""
+      let identifier = ASIdentifierManager.shared().advertisingIdentifier.uuidString
+      return identifier == "00000000-0000-0000-0000-000000000000" ? "" : identifier
     }
-    return [
-      "idfv": idfv,
-      "idfa": idfa,
-      "deviceId": idfv,
-      "riskDeviceId": idfv,
-      "batteryLevel": batteryLevel,
-      "isCharging": isCharging ? 1 : 0,
-      "elapsedMillis": Int(ProcessInfo.processInfo.systemUptime * 1000),
-      "uptimeMillis": String(Int(ProcessInfo.processInfo.systemUptime * 1000)),
-      "isUsingProxy": (proxy["enabled"] as? Bool) == true ? 1 : 0,
-      "isUsingVpn": 0,
-      "isJailbroken": isJailbroken() ? 1 : 0,
-      "isEmulator": isSimulator() ? 1 : 0,
-      "language": Locale.current.languageCode ?? "",
-      "carrier": "",
-      "networkType": "OTHER",
-      "timeZoneName": TimeZone.current.identifier,
-      "cpuCoreCount": ProcessInfo.processInfo.processorCount,
-      "brand": "Apple",
-      "deviceName": UIDevice.current.name,
-      "model": deviceModelName(),
-      "modelName": UIDevice.current.model,
-      "systemVersion": UIDevice.current.systemVersion,
-      "packageName": Bundle.main.bundleIdentifier ?? "",
-      "screenHeight": Int(bounds.height),
-      "screenWidth": Int(bounds.width),
-      "screenSize": "",
-      "innerIp": "",
-      "currentWifiName": wifi.name,
-      "currentWifiBssid": wifi.bssid,
-      "wifiCount": wifi.name.isEmpty ? 0 : 1,
-      "availableStorage": availableStorage,
-      "totalStorage": totalStorage,
-      "totalMemory": String(ProcessInfo.processInfo.physicalMemory),
-      "availableMemory": "0",
-      "pushToken": pushToken
-    ]
-  }
-
-  private func currentWifiInfo() -> (name: String, bssid: String) {
-    guard let interfaces = CNCopySupportedInterfaces() as? [String] else {
-      return ("", "")
-    }
-    for interface in interfaces {
-      if let info = CNCopyCurrentNetworkInfo(interface as CFString) as? [String: Any] {
-        return (
-          info[kCNNetworkInfoKeySSID as String] as? String ?? "",
-          info[kCNNetworkInfoKeyBSSID as String] as? String ?? ""
-        )
-      }
-    }
-    return ("", "")
-  }
-
-  private func isSimulator() -> Bool {
-#if targetEnvironment(simulator)
-    return true
-#else
-    return false
-#endif
-  }
-
-  private func isJailbroken() -> Bool {
-#if targetEnvironment(simulator)
-    return false
-#else
-    return FileManager.default.fileExists(atPath: "/Applications/Cydia.app")
-      || FileManager.default.fileExists(atPath: "/bin/bash")
-      || FileManager.default.fileExists(atPath: "/usr/sbin/sshd")
-#endif
+    return ""
   }
 
   private func configureTrustDecisionIfNeeded() {
