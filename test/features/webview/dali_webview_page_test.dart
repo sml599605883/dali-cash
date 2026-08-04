@@ -207,6 +207,7 @@ void main() {
     expect(source, contains('MixedContentMode.MIXED_CONTENT_NEVER_ALLOW'));
     expect(source, contains('onProgressChanged'));
     expect(source, contains('controller.getTitle()'));
-    expect(source, contains('confirm retention popup is not available'));
+    expect(source, contains("type: '5'"));
+    expect(source, contains('CertificationRetentionGuard.handleBack'));
   });
 }

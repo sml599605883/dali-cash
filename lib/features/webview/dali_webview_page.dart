@@ -13,6 +13,7 @@ import '../../core/json/json.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_signature.dart';
 import '../../core/report/dali_report_service.dart';
+import '../certification/widgets/certification_retention_guard.dart';
 import 'dali_webview_action_coordinator.dart';
 import 'dali_webview_contract.dart';
 
@@ -322,11 +323,24 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
 
     final confirmProductId = daliConfirmProductId(currentUrl);
     if (confirmProductId.isNotEmpty) {
-      NavigationHelper.logger(
-        'WebView confirm retention popup is not available: '
-        'productId=$confirmProductId',
+      await CertificationRetentionGuard.handleBack(
+        type: '5',
+        productId: confirmProductId,
+        onDefaultBack: () {
+          unawaited(
+            _completeBack(controller: controller, canGoBack: canGoBack),
+          );
+        },
       );
+      return;
     }
+    await _completeBack(controller: controller, canGoBack: canGoBack);
+  }
+
+  Future<void> _completeBack({
+    required InAppWebViewController? controller,
+    required bool canGoBack,
+  }) async {
     if (!shouldCloseDaliWebView(canGoBack: canGoBack) && controller != null) {
       await controller.goBack();
       return;
