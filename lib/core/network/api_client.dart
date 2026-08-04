@@ -116,6 +116,13 @@ class ApiClient {
     );
   }
 
+  Future<ApiResponse> orderList({required String status}) {
+    return post(
+      ApiEndpoints.orderList,
+      data: {'anfractuosity': status, 'redeployments': '1', 'unornate': '50'},
+    );
+  }
+
   Future<ApiResponse> retryOriginalAccount({required String orderNo}) {
     return post(ApiEndpoints.userReloan, data: {'saggards': orderNo});
   }
@@ -427,6 +434,23 @@ class ApiClient {
 
   Future<ApiResponse> reportApplePushToken({required String token}) {
     return post(ApiEndpoints.uploadAppleToken, data: {'skiagraph': token});
+  }
+
+  Future<ApiResponse> reportTrustDecisionResult({
+    required String livenessId,
+    required String requestId,
+    required String resultCode,
+    required String result,
+  }) {
+    return post(
+      ApiEndpoints.trustDecisionReport,
+      data: {
+        'retestifies': livenessId,
+        'alloplasm': requestId,
+        'trihedral': resultCode,
+        'tucking': result,
+      },
+    );
   }
 
   Future<ApiResponse> get(

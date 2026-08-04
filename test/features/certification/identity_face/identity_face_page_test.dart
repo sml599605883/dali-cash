@@ -132,20 +132,23 @@ void main() {
     await store.saveProductDetailOrderNo('ORDER-42');
     final client = _FakeFaceApiClient(store);
     final errors = <String>[];
+    final reports = <TrustDecisionLivenessResult>[];
+    const cancelled = TrustDecisionLivenessResult(
+      success: false,
+      code: 3001,
+      message: 'Liveness cancelled',
+      image: '',
+      sequenceId: '',
+      livenessId: '',
+      raw: <String, dynamic>{},
+    );
 
     await _pumpFacePage(
       tester,
       client: client,
       errors: errors,
-      showTrustDecisionLiveness: (_) async => const TrustDecisionLivenessResult(
-        success: false,
-        code: 3001,
-        message: 'Liveness cancelled',
-        image: '',
-        sequenceId: '',
-        livenessId: '',
-        raw: <String, dynamic>{},
-      ),
+      showTrustDecisionLiveness: (_) async => cancelled,
+      reportTrustDecisionResult: (result) async => reports.add(result),
     );
 
     await tester.tap(find.byKey(const Key('identityFaceUploadButton')));
@@ -153,6 +156,7 @@ void main() {
 
     expect(errors, ['Liveness cancelled']);
     expect(client.uploads, isEmpty);
+    expect(reports, [cancelled]);
   });
 
   testWidgets('uploads documented TrustDecision fields and continues', (
@@ -164,6 +168,7 @@ void main() {
     final continuedProducts = <String>[];
     final builtImages = <String>[];
     final riskStarts = <int>[];
+    final reports = <TrustDecisionLivenessResult>[];
 
     await _pumpFacePage(
       tester,
@@ -180,6 +185,7 @@ void main() {
       reportRiskScene: (startTimeSeconds) async {
         riskStarts.add(startTimeSeconds);
       },
+      reportTrustDecisionResult: (result) async => reports.add(result),
     );
 
     await tester.tap(find.byKey(const Key('identityFaceUploadButton')));
@@ -201,6 +207,7 @@ void main() {
     });
     expect(continuedProducts, ['product-42']);
     expect(riskStarts, [100]);
+    expect(reports, [_successfulLiveness]);
   });
 
   testWidgets('ignores a second upload tap while permission is pending', (
@@ -272,6 +279,8 @@ Future<void> _pumpFacePage(
   List<String>? errors,
   int Function()? nowSeconds,
   Future<void> Function(int startTimeSeconds)? reportRiskScene,
+  Future<void> Function(TrustDecisionLivenessResult result)?
+  reportTrustDecisionResult,
 }) async {
   tester.view.physicalSize = const Size(375, 812);
   tester.view.devicePixelRatio = 1;
@@ -299,6 +308,7 @@ Future<void> _pumpFacePage(
         continueProductDetailFlow: continueProductDetailFlow ?? ((_) async {}),
         nowSeconds: nowSeconds,
         reportRiskScene: reportRiskScene,
+        reportTrustDecisionResult: reportTrustDecisionResult,
       ),
     ),
   );

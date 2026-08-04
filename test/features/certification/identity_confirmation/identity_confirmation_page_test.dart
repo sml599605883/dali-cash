@@ -1,5 +1,4 @@
 import 'package:dali_cash/app/layout/screen_adapter.dart';
-import 'package:dali_cash/app/routes/app_routes.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
@@ -7,7 +6,6 @@ import 'package:dali_cash/core/network/api_response.dart';
 import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/features/certification/identity_confirmation/identity_confirmation_page.dart';
 import 'package:dali_cash/features/certification/identity_confirmation/identity_recognition_result.dart';
-import 'package:dali_cash/features/certification/identity_face/identity_face_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,64 +54,65 @@ void main() {
     );
   });
 
-  testWidgets('edits recognized fields and submits before opening face page', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(375, 812);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(Get.reset);
-    ScreenAdapter.initForSize(const Size(375, 812));
-    final client = _IdentitySubmitApiClient();
-    await client.config.sessionStore.saveIdentitySceneStartTime(100);
-    final riskStarts = <int>[];
-    Get.put<ApiClient>(client);
+  testWidgets(
+    'edits recognized fields and reloads the server-controlled next step',
+    (tester) async {
+      tester.view.physicalSize = const Size(375, 812);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(Get.reset);
+      ScreenAdapter.initForSize(const Size(375, 812));
+      final client = _IdentitySubmitApiClient();
+      await client.config.sessionStore.saveIdentitySceneStartTime(100);
+      final riskStarts = <int>[];
+      final continuedProducts = <String>[];
+      Get.put<ApiClient>(client);
 
-    await tester.pumpWidget(
-      GetMaterialApp(
-        builder: EasyLoading.init(),
-        home: IdentityConfirmationPage(
-          productId: 'product-42',
-          cardType: 'PRC',
-          apiClient: client,
-          recognizedInfo: IdentityRecognitionResult.fromMap({
-            'crocidolites': 'OLD NAME',
-            'imputes': 'OLD-ID',
-            'annealers': '1995/05/31',
-          }),
-          reportRiskScene: (startTimeSeconds) async {
-            riskStarts.add(startTimeSeconds);
-          },
-        ),
-        getPages: [
-          GetPage(
-            name: AppRoutes.identityFace,
-            page: () => const IdentityFacePage(),
+      await tester.pumpWidget(
+        GetMaterialApp(
+          builder: EasyLoading.init(),
+          home: IdentityConfirmationPage(
+            productId: 'product-42',
+            cardType: 'PRC',
+            apiClient: client,
+            recognizedInfo: IdentityRecognitionResult.fromMap({
+              'crocidolites': 'OLD NAME',
+              'imputes': 'OLD-ID',
+              'annealers': '1995/05/31',
+            }),
+            reportRiskScene: (startTimeSeconds) async {
+              riskStarts.add(startTimeSeconds);
+            },
+            continueProductDetailFlow: (productId) async {
+              continuedProducts.add(productId);
+            },
           ),
-        ],
-      ),
-    );
+        ),
+      );
 
-    await tester.enterText(
-      find.byKey(const Key('identityConfirmationNameInput')),
-      'JUAN DELA CRUZ',
-    );
-    await tester.enterText(
-      find.byKey(const Key('identityConfirmationIdInput')),
-      'ID-9988',
-    );
-    await tester.tap(find.byKey(const Key('identityConfirmationUploadButton')));
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('identityConfirmationNameInput')),
+        'JUAN DELA CRUZ',
+      );
+      await tester.enterText(
+        find.byKey(const Key('identityConfirmationIdInput')),
+        'ID-9988',
+      );
+      await tester.tap(
+        find.byKey(const Key('identityConfirmationUploadButton')),
+      );
+      await tester.pumpAndSettle();
 
-    expect(client.name, 'JUAN DELA CRUZ');
-    expect(client.idNumber, 'ID-9988');
-    expect(client.birthday, '31-05-1995');
-    expect(client.cardType, 'PRC');
-    expect(Get.currentRoute, AppRoutes.identityFace);
-    expect(Get.arguments, {'highlands': 'product-42', 'cardType': 'PRC'});
-    expect(riskStarts, [100]);
-  });
+      expect(client.name, 'JUAN DELA CRUZ');
+      expect(client.idNumber, 'ID-9988');
+      expect(client.birthday, '31-05-1995');
+      expect(client.cardType, 'PRC');
+      expect(continuedProducts, ['product-42']);
+      expect(Get.currentRoute, '/');
+      expect(riskStarts, [100]);
+    },
+  );
 
   testWidgets('shows cached hoddens copy from product detail', (tester) async {
     tester.view.physicalSize = const Size(375, 812);

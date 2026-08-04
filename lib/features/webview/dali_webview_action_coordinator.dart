@@ -140,16 +140,15 @@ class DaliWebViewActionCoordinator {
       return const DaliWebViewResult.failure('Missing orderNo');
     }
     await showLoading?.call();
-    try {
-      final url = (await retryOrder?.call(orderNo) ?? '').trim();
-      if (url.isEmpty) {
-        return const DaliWebViewResult.failure('Missing retry result url');
-      }
-      await replaceWebView?.call(url);
-      return const DaliWebViewResult.success();
-    } finally {
-      await dismissLoading?.call();
+    final url = (await retryOrder?.call(orderNo) ?? '').trim();
+    if (url.isEmpty) {
+      const message = 'Missing retry result url';
+      await showError?.call(message);
+      return const DaliWebViewResult.failure(message);
     }
+    await replaceWebView?.call(url);
+    await dismissLoading?.call();
+    return const DaliWebViewResult.success();
   }
 
   Future<DaliWebViewResult> _changeAccount(DaliWebViewRequest request) async {
@@ -158,7 +157,9 @@ class DaliWebViewActionCoordinator {
     if (productId.isEmpty || orderNo.isEmpty) {
       return const DaliWebViewResult.failure('Missing account information');
     }
+    await showLoading?.call();
     await changeAccount?.call(productId: productId, orderNo: orderNo);
+    await dismissLoading?.call();
     return const DaliWebViewResult.success();
   }
 

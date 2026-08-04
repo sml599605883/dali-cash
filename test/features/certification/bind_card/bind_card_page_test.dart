@@ -478,6 +478,7 @@ void main() {
     tester,
   ) async {
     final payloads = <BindCardLivenessPayload>[];
+    final reports = <TrustDecisionLivenessResult>[];
     await _pumpPage(
       tester,
       load: (_) async =>
@@ -502,6 +503,7 @@ void main() {
         livenessId: 'liveness-42',
         raw: <String, dynamic>{},
       ),
+      reportTrustDecisionResult: (result) async => reports.add(result),
     );
     await tester.pumpAndSettle();
 
@@ -513,6 +515,52 @@ void main() {
     expect(payloads.last.type, '7');
     expect(payloads.last.livenessId, 'liveness-42');
     expect(payloads.last.license, 'license-42');
+    expect(reports, hasLength(1));
+    expect(reports.single.livenessId, 'liveness-42');
+  });
+
+  testWidgets('TrustDecision cancellation is reported without resubmitting', (
+    tester,
+  ) async {
+    final errors = <String>[];
+    final reports = <TrustDecisionLivenessResult>[];
+    var saveCount = 0;
+    const cancelled = TrustDecisionLivenessResult(
+      success: false,
+      code: 3001,
+      message: 'Liveness cancelled',
+      image: '',
+      sequenceId: '',
+      livenessId: '',
+      raw: <String, dynamic>{},
+    );
+    await _pumpPage(
+      tester,
+      load: (_) async =>
+          _bindCardData(channelValue: '100', accountValue: '09171234567'),
+      save: (productId, cardType, fields, liveness) async {
+        saveCount++;
+        return _response(20000);
+      },
+      showError: (message) async => errors.add(message),
+      requestCameraPermission: () async => PermissionStatus.granted,
+      loadLivenessToken: () async => const BindCardLivenessToken(
+        code: '200',
+        license: 'license-42',
+        faceType: 7,
+        message: '',
+      ),
+      showTrustDecisionLiveness: (_) async => cancelled,
+      reportTrustDecisionResult: (result) async => reports.add(result),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bindCardUpload')));
+    await tester.pumpAndSettle();
+
+    expect(saveCount, 1);
+    expect(errors, ['Liveness cancelled']);
+    expect(reports, [cancelled]);
   });
 
   testWidgets('locks duplicate uploads while save is pending', (tester) async {
@@ -702,6 +750,8 @@ Future<void> _pumpPage(
   BindCardCameraPermissionRequester? requestCameraPermission,
   BindCardTokenLoad? loadLivenessToken,
   BindCardLivenessLauncher? showTrustDecisionLiveness,
+  Future<void> Function(TrustDecisionLivenessResult result)?
+  reportTrustDecisionResult,
 }) {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(375, 812);
@@ -726,6 +776,7 @@ Future<void> _pumpPage(
         requestCameraPermission: requestCameraPermission,
         loadLivenessToken: loadLivenessToken,
         showTrustDecisionLiveness: showTrustDecisionLiveness,
+        reportTrustDecisionResult: reportTrustDecisionResult,
       ),
     ),
   );

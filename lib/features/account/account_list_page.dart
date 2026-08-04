@@ -20,6 +20,7 @@ typedef AccountListAddMethod =
     Future<void> Function({required String productId, required String orderNo});
 typedef AccountListReplace = Future<void> Function(String url);
 typedef AccountListMessage = Future<void> Function(String message);
+typedef AccountListAsyncAction = Future<void> Function();
 
 class AccountListPage extends StatefulWidget {
   const AccountListPage({
@@ -31,6 +32,8 @@ class AccountListPage extends StatefulWidget {
     this.addMethod,
     this.replace,
     this.showError,
+    this.showLoading,
+    this.dismissLoading,
   });
 
   final String productId;
@@ -40,6 +43,8 @@ class AccountListPage extends StatefulWidget {
   final AccountListAddMethod? addMethod;
   final AccountListReplace? replace;
   final AccountListMessage? showError;
+  final AccountListAsyncAction? showLoading;
+  final AccountListAsyncAction? dismissLoading;
 
   @override
   State<AccountListPage> createState() => _AccountListPageState();
@@ -126,7 +131,6 @@ class _AccountListPageState extends State<AccountListPage> {
             children: [
               for (final section in _sections) ...[
                 _SectionLabel(section: section),
-                SizedBox(height: ScreenAdapter.height(8)),
                 for (final account in section.accounts) ...[
                   _AccountCard(
                     section: section,
@@ -197,6 +201,7 @@ class _AccountListPageState extends State<AccountListPage> {
     final selected = _selected;
     if (_submitting || selected == null) return;
     setState(() => _submitting = true);
+    await (widget.showLoading ?? EasyLoading.show)();
     try {
       final url = await (widget.submit ?? _defaultSubmit)(
         orderNo: _orderNo,
@@ -208,12 +213,15 @@ class _AccountListPageState extends State<AccountListPage> {
       if (NavigationHelper.webViewUri(url) == null) {
         throw ApiBusinessException('Invalid account change result url');
       }
+      await (widget.dismissLoading ?? EasyLoading.dismiss)();
       await (widget.replace ?? _defaultReplace)(url.trim());
     } catch (error) {
       if (mounted) {
         await (widget.showError ?? EasyLoading.showError)(
           ApiErrorMessage.resolve(error),
         );
+      } else {
+        await (widget.dismissLoading ?? EasyLoading.dismiss)();
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -335,12 +343,14 @@ class _SectionLabel extends StatelessWidget {
     return Semantics(
       label: section.title,
       image: true,
-      child: Image.asset(
-        asset,
-        width: ScreenAdapter.width(width),
-        height: ScreenAdapter.height(55),
-        fit: BoxFit.contain,
+      child: Align(
         alignment: Alignment.centerLeft,
+        child: Image.asset(
+          asset,
+          height: ScreenAdapter.height(48),
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+        ),
       ),
     );
   }
@@ -615,20 +625,20 @@ class _AccountListFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: EdgeInsets.all(ScreenAdapter.width(16)),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.personalInformationFooterShadow,
-              blurRadius: 8,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
+    return Container(
+      padding: EdgeInsets.all(ScreenAdapter.width(16)),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.personalInformationFooterShadow,
+            blurRadius: 8,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
         child: SizedBox(
           height: ScreenAdapter.height(48),
           child: ElevatedButton(

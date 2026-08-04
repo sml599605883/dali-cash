@@ -129,6 +129,19 @@ void main() {
     });
   });
 
+  test('orderList posts documented Dali paging and status fields', () async {
+    await client.orderList(status: '4');
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.orderList));
+    expect(request.data, {
+      'anfractuosity': '4',
+      'redeployments': '1',
+      'unornate': '50',
+    });
+  });
+
   test('original account retry posts the documented order field', () async {
     await client.retryOriginalAccount(orderNo: 'ORDER-1');
 
@@ -564,6 +577,25 @@ void main() {
     expect(request.method, 'POST');
     expect(request.path, endsWith(ApiEndpoints.uploadAppleToken));
     expect(request.data, {'skiagraph': 'apns-token'});
+  });
+
+  test('TrustDecision report posts the documented Dali fields', () async {
+    await client.reportTrustDecisionResult(
+      livenessId: 'liveness-42',
+      requestId: 'sequence-42',
+      resultCode: '3001',
+      result: '{"resultMessage":"cancelled"}',
+    );
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith(ApiEndpoints.trustDecisionReport));
+    expect(request.data, {
+      'retestifies': 'liveness-42',
+      'alloplasm': 'sequence-42',
+      'trihedral': '3001',
+      'tucking': '{"resultMessage":"cancelled"}',
+    });
   });
 
   test('missing upload file fails before transport', () async {

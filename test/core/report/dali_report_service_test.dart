@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dali_cash/core/client/client_bridge.dart';
 import 'package:dali_cash/core/json/json.dart';
@@ -112,7 +113,39 @@ void main() {
     expect(api.riskStartTime, '100');
     expect(api.riskEndTime, '200');
   });
+
+  test('TrustDecision report serializes the complete native result', () async {
+    await service.reportTrustDecisionResult(_cancelledLiveness);
+
+    expect(api.trustDecisionLivenessId, '');
+    expect(api.trustDecisionRequestId, 'sequence-42');
+    expect(api.trustDecisionResultCode, '3001');
+    expect(jsonDecode(api.trustDecisionResult), {
+      'livenessId': '',
+      'requestId': 'sequence-42',
+      'resultCode': '3001',
+      'resultMessage': 'Liveness cancelled',
+    });
+  });
+
+  test('TrustDecision endpoint failure does not escape the service', () async {
+    api.failTrustDecisionReport = true;
+
+    await service.reportTrustDecisionResult(_cancelledLiveness);
+
+    expect(api.trustDecisionCalls, 1);
+  });
 }
+
+const _cancelledLiveness = TrustDecisionLivenessResult(
+  success: false,
+  code: 3001,
+  message: 'Liveness cancelled',
+  image: '',
+  sequenceId: 'sequence-42',
+  livenessId: '',
+  raw: <String, dynamic>{},
+);
 
 class FakeDaliApi extends ApiClient {
   FakeDaliApi()
@@ -136,6 +169,12 @@ class FakeDaliApi extends ApiClient {
   String riskOrderNo = '';
   String riskStartTime = '';
   String riskEndTime = '';
+  int trustDecisionCalls = 0;
+  bool failTrustDecisionReport = false;
+  String trustDecisionLivenessId = '';
+  String trustDecisionRequestId = '';
+  String trustDecisionResultCode = '';
+  String trustDecisionResult = '';
   @override
   Future<ApiResponse> reportGoogleMarket({
     required String idfv,
@@ -193,6 +232,22 @@ class FakeDaliApi extends ApiClient {
     riskOrderNo = orderNo;
     riskStartTime = startTime;
     riskEndTime = endTime;
+    return _success();
+  }
+
+  @override
+  Future<ApiResponse> reportTrustDecisionResult({
+    required String livenessId,
+    required String requestId,
+    required String resultCode,
+    required String result,
+  }) async {
+    trustDecisionCalls++;
+    trustDecisionLivenessId = livenessId;
+    trustDecisionRequestId = requestId;
+    trustDecisionResultCode = resultCode;
+    trustDecisionResult = result;
+    if (failTrustDecisionReport) throw StateError('report failed');
     return _success();
   }
 

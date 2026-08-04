@@ -137,6 +137,33 @@ void main() {
     expect(result.code, 0);
   });
 
+  test('empty retry result replaces loading with a stable error', () async {
+    coordinator = DaliWebViewActionCoordinator(
+      retryOrder: (orderNo) async {
+        events.add('retry:$orderNo');
+        return '';
+      },
+      showLoading: () async => events.add('loading'),
+      dismissLoading: () async => events.add('dismiss'),
+      showError: (message) async => events.add('error:$message'),
+    );
+
+    final result = await coordinator.dispatch(
+      DaliWebViewRequest.decode({
+        'action': DaliWebViewActions.retryOrder,
+        'data': {'saggards': 'ORDER-2'},
+      }),
+    );
+
+    expect(events, [
+      'loading',
+      'retry:ORDER-2',
+      'error:Missing retry result url',
+    ]);
+    expect(result.code, -1);
+    expect(result.message, 'Missing retry result url');
+  });
+
   test(
     'validates and delegates account change without replacing here',
     () async {
@@ -153,12 +180,38 @@ void main() {
         }),
       );
 
-      expect(events, ['change:product-3:ORDER-3']);
+      expect(events, ['loading', 'change:product-3:ORDER-3', 'dismiss']);
       expect(success.code, 0);
       expect(failure.code, -1);
       expect(failure.message, 'Missing account information');
     },
   );
+
+  test('account change replaces loading with an error on failure', () async {
+    coordinator = DaliWebViewActionCoordinator(
+      changeAccount: ({required productId, required orderNo}) async {
+        events.add('change:$productId:$orderNo');
+        throw StateError('account unavailable');
+      },
+      showLoading: () async => events.add('loading'),
+      dismissLoading: () async => events.add('dismiss'),
+      showError: (message) async => events.add('error:$message'),
+    );
+
+    final result = await coordinator.dispatch(
+      DaliWebViewRequest.decode({
+        'action': DaliWebViewActions.changeAccount,
+        'data': {'thunderstruck': 'product-3', 'saggards': 'ORDER-3'},
+      }),
+    );
+
+    expect(events, [
+      'loading',
+      'change:product-3:ORDER-3',
+      'error:Bad state: account unavailable',
+    ]);
+    expect(result.code, -1);
+  });
 
   test(
     'invalid actions and callback exceptions return stable failures',

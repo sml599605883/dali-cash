@@ -7,8 +7,8 @@ import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
 
 import '../../../app/layout/screen_adapter.dart';
+import '../../../app/navigation/navigation_helper.dart';
 import '../../../app/resources/app_assets.dart';
-import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../core/json/json.dart';
 import '../../../core/network/api_client.dart';
@@ -21,6 +21,8 @@ import 'identity_recognition_result.dart';
 typedef IdentityConfirmationLogger = void Function(String message);
 typedef IdentityConfirmationRiskReporter =
     Future<void> Function(int startTimeSeconds);
+typedef IdentityConfirmationContinuation =
+    Future<void> Function(String productId);
 
 class IdentityConfirmationPage extends StatefulWidget {
   static const defaultPromptMessage =
@@ -34,6 +36,7 @@ class IdentityConfirmationPage extends StatefulWidget {
     this.logger,
     this.apiClient,
     this.reportRiskScene,
+    this.continueProductDetailFlow,
   });
 
   final String productId;
@@ -42,6 +45,7 @@ class IdentityConfirmationPage extends StatefulWidget {
   final IdentityConfirmationLogger? logger;
   final ApiClient? apiClient;
   final IdentityConfirmationRiskReporter? reportRiskScene;
+  final IdentityConfirmationContinuation? continueProductDetailFlow;
 
   @override
   State<IdentityConfirmationPage> createState() =>
@@ -225,12 +229,8 @@ class _IdentityConfirmationPageState extends State<IdentityConfirmationPage> {
         'identity confirmation submitted: '
         'productId=${_productId()}, type=${_cardType()}',
       );
-      unawaited(
-        Get.toNamed<void>(
-          AppRoutes.identityFace,
-          arguments: {'highlands': _productId(), 'cardType': _cardType()},
-        ),
-      );
+      await (widget.continueProductDetailFlow ??
+          NavigationHelper.continueProductDetailFlow)(_productId());
     } catch (error) {
       await EasyLoading.showError(ApiErrorMessage.resolve(error));
     } finally {
@@ -240,10 +240,11 @@ class _IdentityConfirmationPageState extends State<IdentityConfirmationPage> {
 
   Future<void> _reportIdentityRisk(int startTimeSeconds) {
     return DaliReportService.current?.reportRisk(
-      productId: _productId(),
-      scene: '3',
-      startedAtSeconds: startTimeSeconds,
-    ) ?? Future<void>.value();
+          productId: _productId(),
+          scene: '3',
+          startedAtSeconds: startTimeSeconds,
+        ) ??
+        Future<void>.value();
   }
 }
 

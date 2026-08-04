@@ -9,5 +9,6 @@ abstract final class AppRoutes {
   static const emergencyContact = '/certification/emergency-contact';
   static const bindCard = '/certification/bind-card';
   static const accountList = '/account-list';
+  static const mineOrderList = '/mine/orders';
   static const webView = '/webview';
 }

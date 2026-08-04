@@ -1,9 +1,11 @@
 import 'dart:ui' as ui;
 
 import 'package:dali_cash/app/layout/screen_adapter.dart';
+import 'package:dali_cash/app/navigation/navigation_helper.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/features/main_shell/main_controller.dart';
+import 'package:dali_cash/features/orders/order_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -169,25 +171,25 @@ class _OrderCard extends StatelessWidget {
             key: Key('mine-order-all'),
             label: 'View All',
             asset: AppAssets.mineOrderAll,
-            logLabel: 'View All',
+            status: MineOrderStatus.all,
           ),
           _OrderShortcut(
             key: Key('mine-order-unpaid'),
             label: 'Unpaid',
             asset: AppAssets.mineOrderUnpaid,
-            logLabel: 'Unpaid',
+            status: MineOrderStatus.unpaid,
           ),
           _OrderShortcut(
             key: Key('mine-order-late'),
             label: 'Late',
             asset: AppAssets.mineOrderLate,
-            logLabel: 'Late',
+            status: MineOrderStatus.late,
           ),
           _OrderShortcut(
             key: Key('mine-order-paid'),
             label: 'Paid',
             asset: AppAssets.mineOrderPaid,
-            logLabel: 'Paid',
+            status: MineOrderStatus.paid,
           ),
         ],
       ),
@@ -200,18 +202,18 @@ class _OrderShortcut extends StatelessWidget {
     super.key,
     required this.label,
     required this.asset,
-    required this.logLabel,
+    required this.status,
   });
 
   final String label;
   final String asset;
-  final String logLabel;
+  final MineOrderStatus status;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _logTap(logLabel),
+      onTap: () => NavigationHelper.toMineOrderList(initialStatus: status),
       child: SizedBox(
         width: ScreenAdapter.width(58),
         child: Column(
@@ -243,6 +245,8 @@ class _OrderShortcut extends StatelessWidget {
 class _CustomerServiceSection extends StatelessWidget {
   const _CustomerServiceSection();
 
+  static const _customerServicePath = '/#/SlinkierDesulfured';
+
   @override
   Widget build(BuildContext context) {
     return _MineSection(
@@ -255,7 +259,9 @@ class _CustomerServiceSection extends StatelessWidget {
           key: const Key('mine-customer-service'),
           iconAsset: AppAssets.mineCustomerService,
           label: 'Smart customer service',
-          onTap: () => _logTap('Customer Service'),
+          onTap: () => NavigationHelper.toWebPath<void>(
+            path: _customerServicePath,
+          ),
           showChevron: true,
         ),
       ),
@@ -265,6 +271,8 @@ class _CustomerServiceSection extends StatelessWidget {
 
 class _AboutUsSection extends StatelessWidget {
   const _AboutUsSection({required this.versionFuture});
+
+  static const _privacyAgreementPath = '/#/Turbocharger';
 
   final Future<String> versionFuture;
 
@@ -300,7 +308,9 @@ class _AboutUsSection extends StatelessWidget {
               key: const Key('mine-privacy-agreement'),
               iconAsset: AppAssets.minePrivacyAgreement,
               label: 'Privacy Agreement',
-              onTap: () => _logTap('Privacy Agreement'),
+              onTap: () => NavigationHelper.toWebPath<void>(
+                path: _privacyAgreementPath,
+              ),
               showChevron: true,
             ),
             _MineRow(

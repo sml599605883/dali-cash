@@ -65,4 +65,7 @@ abstract final class AppColors {
     0.5,
   );
   static const bindCardSuggestionBackground = Color.fromRGBO(0, 0, 0, 0.59);
+  static const orderTabInactive = Color.fromRGBO(146, 149, 151, 1);
+  static const orderProductText = Color.fromRGBO(60, 60, 60, 1);
+  static const orderMutedText = Color.fromRGBO(153, 153, 153, 1);
 }

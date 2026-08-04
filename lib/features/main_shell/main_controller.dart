@@ -33,6 +33,8 @@ class MainController extends GetxController with WidgetsBindingObserver {
   final selectedIndex = 0.obs;
   final homeData = Rxn<HomeData>();
   final phoneNumber = ''.obs;
+  final progressError = RxnString();
+  final isProgressRefreshing = false.obs;
 
   bool _homeRefreshRequesting = false;
   bool _productApplyRequesting = false;
@@ -74,7 +76,11 @@ class MainController extends GetxController with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(requestHomeDataIfVisible());
+      if (selectedIndex.value == 1) {
+        unawaited(refreshProgress());
+      } else {
+        unawaited(requestHomeDataIfVisible());
+      }
     }
   }
 
@@ -89,7 +95,11 @@ class MainController extends GetxController with WidgetsBindingObserver {
     if (index == 2) {
       await refreshStoredPhone();
     }
-    await requestHomeDataIfVisible();
+    if (index == 0) {
+      await refreshHome();
+    } else if (index == 1) {
+      await refreshProgress();
+    }
   }
 
   Future<void> refreshStoredPhone() async {
@@ -160,34 +170,65 @@ class MainController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> refreshHome() async {
+    await _requestHomeData(showPopup: true);
+  }
+
+  Future<void> refreshProgress() async {
     final client = _apiClient;
     if (_homeRefreshRequesting || client == null) {
       return;
+    }
+    isProgressRefreshing.value = true;
+    try {
+      await _requestHomeData(showPopup: false, reportProgressError: true);
+    } finally {
+      isProgressRefreshing.value = false;
+    }
+  }
+
+  Future<bool> _requestHomeData({
+    required bool showPopup,
+    bool reportProgressError = false,
+  }) async {
+    final client = _apiClient;
+    if (_homeRefreshRequesting || client == null) {
+      return false;
     }
     _homeRefreshRequesting = true;
     try {
       try {
         final response = await client.homePage();
         homeData.value = HomeData.fromJson(response.states);
+        if (reportProgressError) {
+          progressError.value = null;
+        }
       } catch (error) {
-        showError(
-          error is ApiBusinessException ? error.message : 'Request failed',
-        );
-        return;
+        if (reportProgressError) {
+          progressError.value = _resolvedError(error);
+        }
+        showError(_resolvedError(error));
+        return false;
       }
 
-      try {
-        final response = await client.dialog(scene: 1);
-        final type = response.states['sociologeses'].intValue;
-        if (type == 1 || type == 2 || type == 3) {
-          showNotice('New information available');
+      if (showPopup) {
+        try {
+          final response = await client.dialog(scene: 1);
+          final type = response.states['sociologeses'].intValue;
+          if (type == 1 || type == 2 || type == 3) {
+            showNotice('New information available');
+          }
+        } catch (_) {
+          // Popup failures must not invalidate successfully loaded home content.
         }
-      } catch (_) {
-        // Popup failures must not invalidate successfully loaded home content.
       }
+      return true;
     } finally {
       _homeRefreshRequesting = false;
     }
+  }
+
+  String _resolvedError(Object error) {
+    return error is ApiBusinessException ? error.message : 'Request failed';
   }
 }
 

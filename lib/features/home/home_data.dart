@@ -1,18 +1,22 @@
 import '../../core/json/json.dart';
+import '../progress/progress_item.dart';
 
 class HomeData {
   HomeData({
     required this.loanOffer,
     required List<HomeBannerData> banners,
     required List<HomeRecommendationData> recommendations,
+    List<ProgressItem> progressItems = const <ProgressItem>[],
   }) : banners = List.unmodifiable(banners),
-       recommendations = List.unmodifiable(recommendations);
+       recommendations = List.unmodifiable(recommendations),
+       progressItems = List.unmodifiable(progressItems);
 
   factory HomeData.fromJson(Json states) {
     HomeLoanOfferData? largeCard;
     HomeLoanOfferData? smallCard;
     final banners = <HomeBannerData>[];
     final recommendations = <HomeRecommendationData>[];
+    final progressItems = <ProgressItem>[];
 
     for (final section in states['clingiest'].listValue) {
       if (section.mapOrNull == null) {
@@ -42,6 +46,12 @@ class HomeData {
                 .where((item) => item.mapOrNull != null)
                 .map(HomeRecommendationData.fromJson),
           );
+        case _HomeElementType.processList:
+          progressItems.addAll(
+            items
+                .where((item) => item.mapOrNull != null)
+                .map(ProgressItem.fromJson),
+          );
       }
     }
 
@@ -49,12 +59,14 @@ class HomeData {
       loanOffer: largeCard ?? smallCard,
       banners: banners,
       recommendations: recommendations,
+      progressItems: progressItems,
     );
   }
 
   final HomeLoanOfferData? loanOffer;
   final List<HomeBannerData> banners;
   final List<HomeRecommendationData> recommendations;
+  final List<ProgressItem> progressItems;
 }
 
 abstract final class _HomeElementType {
@@ -62,6 +74,7 @@ abstract final class _HomeElementType {
   static const largeCard = 'QuininaSpeculation';
   static const smallCard = 'Rattons';
   static const productList = 'Apocalypse';
+  static const processList = 'PROCESS_LIST';
 }
 
 class HomeLoanOfferData {

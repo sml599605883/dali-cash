@@ -6,6 +6,7 @@ import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/features/home/home_page.dart';
 import 'package:dali_cash/features/mine/mine_page.dart';
+import 'package:dali_cash/features/orders/mine_order_list_page.dart';
 import 'package:dali_cash/features/progress/progress_page.dart';
 import 'package:dali_cash/features/progress/progress_item.dart';
 import 'package:flutter/material.dart';
@@ -392,16 +393,8 @@ void main() {
       await openMine(tester, size: const Size(375, 1200));
 
       final expectations = <Key, String>{
-        const Key('mine-order-all'): '[MinePage] View All tapped',
-        const Key('mine-order-unpaid'): '[MinePage] Unpaid tapped',
-        const Key('mine-order-late'): '[MinePage] Late tapped',
-        const Key('mine-order-paid'): '[MinePage] Paid tapped',
-        const Key('mine-customer-service'):
-            '[MinePage] Customer Service tapped',
         const Key('mine-website'): '[MinePage] Website tapped',
         const Key('mine-copy-website'): '[MinePage] Copy Website tapped',
-        const Key('mine-privacy-agreement'):
-            '[MinePage] Privacy Agreement tapped',
         const Key('mine-account'): '[MinePage] Account tapped',
       };
 
@@ -414,6 +407,34 @@ void main() {
       }
     } finally {
       debugPrint = originalDebugPrint;
+    }
+  });
+
+  testWidgets('opens the dedicated order list from all Mine shortcuts', (
+    tester,
+  ) async {
+    await openMine(tester, size: const Size(375, 1200));
+
+    final expectations = <Key, String>{
+      const Key('mine-order-all'): '4',
+      const Key('mine-order-unpaid'): '7',
+      const Key('mine-order-late'): '6',
+      const Key('mine-order-paid'): '5',
+    };
+    for (final entry in expectations.entries) {
+      await tester.ensureVisible(find.byKey(entry.key));
+      await tester.tap(find.byKey(entry.key));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MineOrderListPage), findsOneWidget);
+      expect(
+        find.byKey(ValueKey('orderTabSelected-${entry.value}')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('mineOrderBack')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MinePage), findsOneWidget);
     }
   });
 

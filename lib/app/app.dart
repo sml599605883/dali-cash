@@ -1,4 +1,5 @@
 import 'package:dali_cash/app/layout/screen_adapter.dart';
+import 'package:dali_cash/app/navigation/app_route_observer.dart';
 import 'package:dali_cash/app/routes/app_routes.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/features/login/login_binding.dart';
@@ -15,6 +16,7 @@ import 'package:dali_cash/features/certification/bind_card/bind_card_page.dart';
 import 'package:dali_cash/features/account/account_list_page.dart';
 import 'package:dali_cash/features/main_shell/main_shell_page.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
+import 'package:dali_cash/features/orders/mine_order_list_page.dart';
 import 'package:dali_cash/features/webview/dali_webview_page.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +33,7 @@ class DaliCashApp extends StatelessWidget {
       title: 'Dali Cash',
       debugShowCheckedModeBanner: false,
       builder: EasyLoading.init(),
+      navigatorObservers: [appRouteObserver],
       initialBinding: initialBinding ?? MainBinding(),
       getPages: [
         GetPage(
@@ -71,6 +74,10 @@ class DaliCashApp extends StatelessWidget {
         GetPage(
           name: AppRoutes.accountList,
           page: () => const AccountListPage(),
+        ),
+        GetPage(
+          name: AppRoutes.mineOrderList,
+          page: () => const MineOrderListPage(),
         ),
         GetPage(
           name: AppRoutes.webView,

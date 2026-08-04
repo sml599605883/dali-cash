@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:adjust_sdk/adjust.dart';
 import 'package:adjust_sdk/adjust_config.dart';
 import 'package:flutter/foundation.dart';
 
+import '../client/client_bridge.dart';
 import '../json/json.dart';
 import '../network/api_client.dart';
 import 'dali_report_data.dart';
@@ -204,6 +206,27 @@ class DaliReportService {
         latitude: daliReportText(location?.latitude),
         startTime: '$startedAtSeconds',
         endTime: '${_nowMillis() ~/ 1000}',
+      );
+    } catch (error) {
+      _log(error);
+    }
+  }
+
+  Future<void> reportTrustDecisionResult(
+    TrustDecisionLivenessResult result,
+  ) async {
+    try {
+      final resultCode = '${result.code}';
+      await client.reportTrustDecisionResult(
+        livenessId: result.livenessId,
+        requestId: result.sequenceId,
+        resultCode: resultCode,
+        result: jsonEncode({
+          'livenessId': result.livenessId,
+          'requestId': result.sequenceId,
+          'resultCode': resultCode,
+          'resultMessage': result.message,
+        }),
       );
     } catch (error) {
       _log(error);

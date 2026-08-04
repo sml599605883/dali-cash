@@ -187,6 +187,30 @@ void main() {
     expect(navigationLogs, isEmpty);
   });
 
+  testWidgets('opens configured H5 paths in the internal WebView', (tester) async {
+    await _pumpRoutes(tester);
+    apiClient.config.webBaseUrl = 'https://h5.example';
+
+    NavigationHelper.toWebPath<void>(path: '/#/SlinkierDesulfured');
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(Get.arguments, {
+      'url': 'https://h5.example/#/SlinkierDesulfured',
+      'title': null,
+    });
+
+    Get.back<void>();
+    await tester.pumpAndSettle();
+    NavigationHelper.toWebPath<void>(path: '/#/Turbocharger');
+    await tester.pumpAndSettle();
+
+    expect(Get.arguments, {
+      'url': 'https://h5.example/#/Turbocharger',
+      'title': null,
+    });
+  });
+
   test('opens external URIs through the injected launcher', () async {
     final opened = await NavigationHelper.openExternalUri(
       Uri.parse('tel:+639171234567'),
@@ -403,6 +427,28 @@ void main() {
     expect(settingsOpenCount, 0);
   });
 
+  testWidgets('server-selected certification step prunes completed flow', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    await NavigationHelper.toIdentitySelection<void>(productId: 'product-42');
+    Get.toNamed<void>(AppRoutes.identityUpload);
+    await tester.pumpAndSettle();
+    Get.toNamed<void>(AppRoutes.identityConfirmation);
+    await tester.pumpAndSettle();
+
+    await NavigationHelper.toIdentityFace<void>(productId: 'product-42');
+    await tester.pumpAndSettle();
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, '/');
+    expect(find.byKey(const Key('homeStub')), findsOneWidget);
+    expect(find.byKey(const Key('identitySelectionStub')), findsNothing);
+    expect(find.byKey(const Key('identityUploadStub')), findsNothing);
+    expect(find.byKey(const Key('identityConfirmationStub')), findsNothing);
+  });
+
   testWidgets('location denial stops apply before the API request', (
     tester,
   ) async {
@@ -548,6 +594,16 @@ void main() {
     await NavigationHelper.continueProductDetailFlow(' product-42 ');
 
     expect(apiClient.detailedProducts, ['product-42']);
+    expect(feedbackEvents, ['loading', 'dismiss']);
+  });
+
+  test('product detail continuation replaces loading with an error', () async {
+    apiClient.detailError = ApiBusinessException('Detail unavailable');
+
+    await NavigationHelper.continueProductDetailFlow('product-42');
+
+    expect(apiClient.detailedProducts, ['product-42']);
+    expect(feedbackEvents, ['loading', 'error:Detail unavailable']);
   });
 
   testWidgets('successful apply handles normalized product detail internally', (
@@ -888,17 +944,17 @@ void main() {
     await NavigationHelper.applyProduct('product-42');
 
     expect(apiClient.detailedProducts, isEmpty);
-    expect(feedbackEvents, ['loading', 'dismiss', 'notice:Admission denied']);
+    expect(feedbackEvents, ['loading', 'notice:Admission denied']);
   });
 
-  test('product failure dismisses loading and presents stable error', () async {
+  test('product failure replaces loading with a stable error', () async {
     await apiClient.config.sessionStore.saveSessionId('session-id');
     apiClient.applyError = ApiBusinessException('Apply unavailable');
 
     await NavigationHelper.applyProduct('product-42');
 
     expect(apiClient.appliedProducts, ['product-42']);
-    expect(feedbackEvents, ['loading', 'dismiss', 'error:Apply unavailable']);
+    expect(feedbackEvents, ['loading', 'error:Apply unavailable']);
   });
 
   test('product detail failure uses the shared error handling', () async {
@@ -908,7 +964,7 @@ void main() {
     await NavigationHelper.applyProduct('product-42');
 
     expect(apiClient.detailedProducts, ['product-42']);
-    expect(feedbackEvents, ['loading', 'dismiss', 'error:Detail unavailable']);
+    expect(feedbackEvents, ['loading', 'error:Detail unavailable']);
   });
 }
 
@@ -931,6 +987,18 @@ Future<void> _pumpRoutes(WidgetTester tester) {
           name: AppRoutes.identitySelection,
           page: () => const Scaffold(
             body: Text('Identity', key: Key('identitySelectionStub')),
+          ),
+        ),
+        GetPage(
+          name: AppRoutes.identityUpload,
+          page: () => const Scaffold(
+            body: Text('Upload', key: Key('identityUploadStub')),
+          ),
+        ),
+        GetPage(
+          name: AppRoutes.identityConfirmation,
+          page: () => const Scaffold(
+            body: Text('Confirmation', key: Key('identityConfirmationStub')),
           ),
         ),
         GetPage(

@@ -33,6 +33,8 @@ typedef IdentityFaceAsyncPresenter = Future<void> Function();
 typedef IdentityFaceErrorPresenter = Future<void> Function(String message);
 typedef IdentityFaceContinuation = Future<void> Function(String productId);
 typedef IdentityFaceRiskReporter = Future<void> Function(int startTimeSeconds);
+typedef IdentityFaceTrustDecisionReporter =
+    Future<void> Function(TrustDecisionLivenessResult result);
 typedef IdentityFaceClock = int Function();
 
 class IdentityFacePage extends StatefulWidget {
@@ -55,6 +57,7 @@ class IdentityFacePage extends StatefulWidget {
     IdentityFaceContinuation? continueProductDetailFlow,
     IdentityFaceClock? nowSeconds,
     this.reportRiskScene,
+    this.reportTrustDecisionResult,
   }) : requestCameraPermission =
            requestCameraPermission ?? _defaultRequestCameraPermission,
        openAppSettingsPage = openAppSettingsPage ?? openAppSettings,
@@ -83,6 +86,7 @@ class IdentityFacePage extends StatefulWidget {
   final IdentityFaceContinuation continueProductDetailFlow;
   final IdentityFaceClock nowSeconds;
   final IdentityFaceRiskReporter? reportRiskScene;
+  final IdentityFaceTrustDecisionReporter? reportTrustDecisionResult;
 
   @override
   State<IdentityFacePage> createState() => _IdentityFacePageState();
@@ -240,6 +244,12 @@ class _IdentityFacePageState extends State<IdentityFacePage> {
 
       final riskStartTime = widget.nowSeconds();
       final result = await widget.showTrustDecisionLiveness(token.license);
+      unawaited(
+        (widget.reportTrustDecisionResult ??
+            (value) =>
+                DaliReportService.current?.reportTrustDecisionResult(value) ??
+                Future<void>.value())(result),
+      );
       if (!result.success) {
         await _fail(
           result.message.isNotEmpty

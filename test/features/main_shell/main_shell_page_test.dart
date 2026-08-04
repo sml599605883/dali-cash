@@ -18,6 +18,7 @@ import 'package:dali_cash/features/login/login_page.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
 import 'package:dali_cash/features/main_shell/main_controller.dart';
 import 'package:dali_cash/features/main_shell/main_shell_page.dart';
+import 'package:dali_cash/features/progress/progress_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
@@ -90,6 +91,48 @@ void main() {
     expect(find.byKey(const Key('home-promo-banner-asset')), findsNothing);
     expect(find.byKey(const Key('home-promo-banner-network')), findsNothing);
     expect(find.text('Recommendation'), findsNothing);
+  });
+
+  testWidgets('renders server progress data from the shared home response', (
+    tester,
+  ) async {
+    final controller = _registerController();
+    controller.homeData.value = _deliveredHomeData();
+    controller.selectedIndex.value = 1;
+
+    await _pumpShell(tester);
+
+    expect(find.byKey(const Key('progress-card')), findsOneWidget);
+    expect(find.text('Server Cash'), findsOneWidget);
+    expect(find.text('PHP 2,000.00'), findsOneWidget);
+    expect(find.text('Application date'), findsOneWidget);
+    expect(find.text('Disbursement Failed'), findsOneWidget);
+    expect(find.text('Retry Original Account'), findsOneWidget);
+  });
+
+  testWidgets('shows Progress loading and retryable first-load error states', (
+    tester,
+  ) async {
+    final controller = _registerController();
+    controller.selectedIndex.value = 1;
+    controller.isProgressRefreshing.value = true;
+
+    await _pumpShell(tester);
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    controller.isProgressRefreshing.value = false;
+    controller.progressError.value = 'Progress unavailable';
+    await tester.pump();
+
+    expect(find.text('Progress unavailable'), findsOneWidget);
+    expect(find.byKey(const Key('progress-load-retry')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('progress-load-retry')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Progress unavailable'), findsNothing);
+    expect(find.text('No progress yet'), findsOneWidget);
   });
 
   testWidgets(
@@ -243,73 +286,81 @@ void main() {
     expect(controller.selectedIndex.value, 0);
   });
 
-  testWidgets(
-    'lifecycle, tabs, and pull refresh request home then popup once',
-    (tester) async {
-      final adapter = _HomeDialogAdapter();
-      final dio = Dio()..httpClientAdapter = adapter;
-      final client = ApiClient(
-        ApiConfig(
-          apiBaseUrl: 'https://example.test',
-          commonParamsProvider: () async => const <String, dynamic>{},
-          timestampProvider: () => 1,
-          randomDigitsProvider: (length) => '1' * length,
+  testWidgets('Home and Progress use their documented refresh request chains', (
+    tester,
+  ) async {
+    final adapter = _HomeDialogAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final client = ApiClient(
+      ApiConfig(
+        apiBaseUrl: 'https://example.test',
+        commonParamsProvider: () async => const <String, dynamic>{},
+        timestampProvider: () => 1,
+        randomDigitsProvider: (length) => '1' * length,
+      ),
+      dio: dio,
+    );
+    client.config.sessionStore = _LoggedInSessionStore();
+    await tester.pumpWidget(
+      DaliCashApp(
+        initialBinding: MainBinding(
+          apiClient: client,
+          showError: (_) {},
+          showNotice: (_) {},
         ),
-        dio: dio,
-      );
-      client.config.sessionStore = _LoggedInSessionStore();
-      await tester.pumpWidget(
-        DaliCashApp(
-          initialBinding: MainBinding(
-            apiClient: client,
-            showError: (_) {},
-            showNotice: (_) {},
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(adapter.events, <String>['home', 'dialog']);
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog']);
 
-      await tester.tap(find.byKey(const Key('tab-home')));
-      await tester.pumpAndSettle();
-      expect(adapter.events, <String>['home', 'dialog']);
+    await tester.tap(find.byKey(const Key('tab-home')));
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog']);
 
-      await tester.tap(find.byKey(const Key('tab-progress')));
-      await tester.pumpAndSettle();
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await tester.pumpAndSettle();
-      expect(adapter.events, <String>['home', 'dialog']);
+    await tester.tap(find.byKey(const Key('tab-progress')));
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog', 'home']);
 
-      await tester.tap(find.byKey(const Key('tab-home')));
-      await tester.pumpAndSettle();
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await tester.pumpAndSettle();
-      expect(adapter.events, <String>[
-        'home',
-        'dialog',
-        'home',
-        'dialog',
-        'home',
-        'dialog',
-      ]);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog', 'home', 'home']);
 
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, 300),
-      );
-      await tester.pumpAndSettle();
-      expect(adapter.events, <String>[
-        'home',
-        'dialog',
-        'home',
-        'dialog',
-        'home',
-        'dialog',
-        'home',
-        'dialog',
-      ]);
-    },
-  );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog', 'home', 'home', 'home']);
+
+    await tester.tap(find.byKey(const Key('tab-home')));
+    await tester.pumpAndSettle();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>[
+      'home',
+      'dialog',
+      'home',
+      'home',
+      'home',
+      'home',
+      'dialog',
+      'home',
+      'dialog',
+    ]);
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>[
+      'home',
+      'dialog',
+      'home',
+      'home',
+      'home',
+      'home',
+      'dialog',
+      'home',
+      'dialog',
+      'home',
+      'dialog',
+    ]);
+  });
 
   testWidgets('malformed remote images fall back without crashing', (
     tester,
@@ -592,6 +643,28 @@ HomeData _deliveredHomeData() {
         loanTerm: '30 Days',
         footer: 'Server footer',
         upscales: -1,
+      ),
+    ],
+    progressItems: const <ProgressItem>[
+      ProgressItem(
+        orderNumber: 'order-1',
+        productId: '9',
+        productName: 'Server Cash',
+        amount: 'PHP 2,000.00',
+        amountLabel: 'Loan Amount',
+        date: '28-12-2022',
+        dateLabel: 'Application date',
+        emblemize: ProgressEmblemize.disbursementFailed,
+        statusLabel: 'Disbursement Failed',
+        actions: <ProgressAction>[
+          ProgressAction(
+            type: 'retry',
+            visible: true,
+            label: 'Retry Original Account',
+            badge: '',
+            route: '',
+          ),
+        ],
       ),
     ],
   );

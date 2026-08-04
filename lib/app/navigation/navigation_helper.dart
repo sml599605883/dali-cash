@@ -11,6 +11,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/permissions/permission_coordinator.dart';
 import '../../core/report/dali_report_service.dart';
+import '../../features/orders/order_list_item.dart';
 import '../../features/product_detail/product_detail_data.dart';
 import '../routes/app_routes.dart';
 import 'dali_deep_link.dart';
@@ -49,6 +50,16 @@ abstract final class NavigationHelper {
     'TrotlineScootches': 'ext',
     'bank': 'bank',
     'MolehillSubconscious': 'bank',
+  };
+  static const Set<String> _certificationFlowRouteNames = <String>{
+    AppRoutes.identitySelection,
+    AppRoutes.identityUpload,
+    AppRoutes.identityConfirmation,
+    AppRoutes.identityFace,
+    AppRoutes.personalInformation,
+    AppRoutes.workInformation,
+    AppRoutes.emergencyContact,
+    AppRoutes.bindCard,
   };
 
   static NavigationAsyncPresenter loadingPresenter = defaultLoadingPresenter;
@@ -188,13 +199,34 @@ abstract final class NavigationHelper {
     );
   }
 
+  static Future<T?>? toMineOrderList<T extends Object?>({
+    MineOrderStatus initialStatus = MineOrderStatus.all,
+  }) {
+    return Get.toNamed<T>(
+      AppRoutes.mineOrderList,
+      arguments: {'initialStatus': initialStatus.code},
+    );
+  }
+
+  static void _openTopLevelCertification(
+    String routeName, {
+    required Map<String, dynamic> arguments,
+  }) {
+    Get.offNamedUntil<void>(routeName, (route) {
+      final name = route.settings.name;
+      return name != null &&
+          name.isNotEmpty &&
+          !_certificationFlowRouteNames.contains(name);
+    }, arguments: arguments);
+  }
+
   static Future<T?>? toIdentitySelection<T extends Object?>({
     String productId = '',
   }) {
     if (Get.currentRoute == AppRoutes.identitySelection) {
       return null;
     }
-    Get.toNamed<T>(
+    _openTopLevelCertification(
       AppRoutes.identitySelection,
       arguments: {'highlands': productId.trim()},
     );
@@ -207,7 +239,7 @@ abstract final class NavigationHelper {
     if (Get.currentRoute == AppRoutes.identityFace) {
       return null;
     }
-    Get.toNamed<T>(
+    _openTopLevelCertification(
       AppRoutes.identityFace,
       arguments: {'highlands': productId.trim()},
     );
@@ -220,7 +252,7 @@ abstract final class NavigationHelper {
     if (Get.currentRoute == AppRoutes.personalInformation) {
       return null;
     }
-    Get.toNamed<T>(
+    _openTopLevelCertification(
       AppRoutes.personalInformation,
       arguments: {'highlands': productId.trim()},
     );
@@ -233,7 +265,7 @@ abstract final class NavigationHelper {
     if (Get.currentRoute == AppRoutes.workInformation) {
       return null;
     }
-    Get.toNamed<T>(
+    _openTopLevelCertification(
       AppRoutes.workInformation,
       arguments: {'highlands': productId.trim()},
     );
@@ -244,7 +276,7 @@ abstract final class NavigationHelper {
     String productId = '',
   }) {
     if (Get.currentRoute == AppRoutes.emergencyContact) return null;
-    Get.toNamed<T>(
+    _openTopLevelCertification(
       AppRoutes.emergencyContact,
       arguments: {'highlands': productId.trim()},
     );
@@ -260,8 +292,10 @@ abstract final class NavigationHelper {
     final arguments = <String, dynamic>{'highlands': productId.trim()};
     if (isAccountChange) {
       arguments.addAll({'saggards': orderNo.trim(), 'isAccountChange': true});
+      Get.toNamed<T>(AppRoutes.bindCard, arguments: arguments);
+      return Future<T?>.value();
     }
-    Get.toNamed<T>(AppRoutes.bindCard, arguments: arguments);
+    _openTopLevelCertification(AppRoutes.bindCard, arguments: arguments);
     return Future<T?>.value();
   }
 
@@ -289,6 +323,24 @@ abstract final class NavigationHelper {
       AppRoutes.webView,
       arguments: {'url': uri.toString(), 'title': title},
     );
+  }
+
+  static Future<T?>? toWebPath<T extends Object?>({
+    required String path,
+    String? title,
+  }) {
+    if (!Get.isRegistered<ApiClient>()) {
+      logger('web base URL is unavailable: $path');
+      return null;
+    }
+    final base = Get.find<ApiClient>().config.webBaseUrl.trim();
+    final baseUri = Uri.tryParse(base);
+    if (baseUri == null || baseUri.host.isEmpty) {
+      logger('invalid web base URL: $base');
+      return null;
+    }
+    final uri = baseUri.resolve(path.trim());
+    return toWebView<T>(url: uri.toString(), title: title);
   }
 
   static Future<T?>? replaceWebView<T extends Object?>({
@@ -373,9 +425,15 @@ abstract final class NavigationHelper {
   static Future<void> continueProductDetailFlow(String productId) async {
     final normalizedProductId = productId.trim();
     if (normalizedProductId.isEmpty) return;
-    await _productFlow(
-      Get.find<ApiClient>(),
-    ).loadProductDetail(normalizedProductId);
+    await loadingPresenter();
+    try {
+      await _productFlow(
+        Get.find<ApiClient>(),
+      ).loadProductDetail(normalizedProductId);
+      await loadingDismissor();
+    } catch (error) {
+      await errorPresenter(ApiErrorMessage.resolve(error));
+    }
   }
 
   static Future<void> _dispatchDeepLink(DaliDeepLink target) async {

@@ -3,33 +3,90 @@ import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/features/progress/progress_item.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-class ProgressPage extends StatelessWidget {
-  const ProgressPage({super.key, this.items = ProgressItem.samples});
+import '../main_shell/main_controller.dart';
 
-  final List<ProgressItem> items;
+class ProgressPage extends GetView<MainController> {
+  const ProgressPage({super.key, this.items});
+
+  final List<ProgressItem>? items;
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.pageBackground,
-      child: SafeArea(
-        bottom: false,
-        child: items.isEmpty ? const _EmptyProgress() : _ProgressList(items),
+    if (items != null) {
+      return _ProgressRefreshView(items: items!, onRefresh: null);
+    }
+    return Obx(
+      () => _ProgressRefreshView(
+        items: controller.homeData.value?.progressItems ?? const [],
+        isLoading: controller.isProgressRefreshing.value,
+        error: controller.progressError.value,
+        onRefresh: controller.refreshProgress,
       ),
     );
   }
 }
 
-class _EmptyProgress extends StatelessWidget {
-  const _EmptyProgress();
+class _ProgressRefreshView extends StatelessWidget {
+  const _ProgressRefreshView({
+    required this.items,
+    required this.onRefresh,
+    this.isLoading = false,
+    this.error,
+  });
+
+  final List<ProgressItem> items;
+  final Future<void> Function()? onRefresh;
+  final bool isLoading;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    final scrollView = CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        const SliverToBoxAdapter(child: _ProgressTitle()),
+        if (isLoading && items.isEmpty)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (error != null && items.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _ProgressError(message: error!, onRetry: onRefresh),
+          )
+        else if (items.isEmpty)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: _EmptyProgressContent(),
+          )
+        else
+          _ProgressItemsSliver(items),
+      ],
+    );
+
+    return ColoredBox(
+      color: AppColors.pageBackground,
+      child: SafeArea(
+        bottom: false,
+        child: onRefresh == null
+            ? scrollView
+            : RefreshIndicator(onRefresh: onRefresh!, child: scrollView),
+      ),
+    );
+  }
+}
+
+class _EmptyProgressContent extends StatelessWidget {
+  const _EmptyProgressContent();
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const _ProgressTitle(),
-        const Spacer(),
         Image.asset(
           AppAssets.progressEmpty,
           key: const Key('progress-empty-image'),
@@ -47,42 +104,57 @@ class _EmptyProgress extends StatelessWidget {
             height: 22 / 16,
           ),
         ),
-        const Spacer(flex: 2),
       ],
     );
   }
 }
 
-class _ProgressList extends StatelessWidget {
-  const _ProgressList(this.items);
+class _ProgressError extends StatelessWidget {
+  const _ProgressError({required this.message, required this.onRetry});
+
+  final String message;
+  final Future<void> Function()? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(message, style: TextStyle(color: AppColors.textPrimary)),
+        SizedBox(height: ScreenAdapter.height(16)),
+        TextButton(
+          key: const Key('progress-load-retry'),
+          onPressed: onRetry == null ? null : () => onRetry!(),
+          child: const Text('Retry'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProgressItemsSliver extends StatelessWidget {
+  const _ProgressItemsSliver(this.items);
 
   final List<ProgressItem> items;
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        const SliverToBoxAdapter(child: _ProgressTitle()),
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(
-            ScreenAdapter.width(28),
-            ScreenAdapter.height(16),
-            ScreenAdapter.width(28),
-            ScreenAdapter.height(24),
+    return SliverPadding(
+      padding: EdgeInsets.fromLTRB(
+        ScreenAdapter.width(28),
+        ScreenAdapter.height(16),
+        ScreenAdapter.width(28),
+        ScreenAdapter.height(24),
+      ),
+      sliver: SliverList.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) => Padding(
+          padding: EdgeInsets.only(
+            bottom: index == items.length - 1 ? 0 : ScreenAdapter.height(16),
           ),
-          sliver: SliverList.builder(
-            itemCount: items.length,
-            itemBuilder: (context, index) => Padding(
-              padding: EdgeInsets.only(
-                bottom: index == items.length - 1
-                    ? 0
-                    : ScreenAdapter.height(16),
-              ),
-              child: _ProgressCard(item: items[index]),
-            ),
-          ),
+          child: _ProgressCard(item: items[index]),
         ),
-      ],
+      ),
     );
   }
 }
@@ -116,8 +188,13 @@ class _ProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final presentation = _ProgressPresentation.from(item.emblemize);
-    final hasActions = presentation.actions;
+    final presentation = _ProgressPresentation.from(
+      item.emblemize,
+      item.statusLabel,
+    );
+    final hasActions = item.usesServerActions
+        ? item.actions.isNotEmpty
+        : presentation.actions;
     final cardHeight = hasActions ? 158.0 : 118.0;
 
     return SizedBox(
@@ -149,12 +226,16 @@ class _ProgressCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _ValueRow(
-                          label: presentation.amountLabel,
+                          label: item.amountLabel.isEmpty
+                              ? presentation.amountLabel
+                              : item.amountLabel,
                           value: item.amount,
                         ),
                         SizedBox(height: ScreenAdapter.height(8)),
                         _ValueRow(
-                          label: presentation.dateLabel,
+                          label: item.dateLabel.isEmpty
+                              ? presentation.dateLabel
+                              : item.dateLabel,
                           value: item.date,
                         ),
                       ],
@@ -165,7 +246,10 @@ class _ProgressCard extends StatelessWidget {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      child: _ActionRow(presentation: presentation),
+                      child: _ActionRow(
+                        presentation: presentation,
+                        actions: item.actions,
+                      ),
                     ),
                 ],
               ),
@@ -280,12 +364,46 @@ class _ValueRow extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.presentation});
+  const _ActionRow({required this.presentation, required this.actions});
 
   final _ProgressPresentation presentation;
+  final List<ProgressAction> actions;
 
   @override
   Widget build(BuildContext context) {
+    if (actions.isNotEmpty) {
+      return SizedBox(
+        height: ScreenAdapter.height(40),
+        child: Row(
+          children: actions
+              .map(
+                (action) => Expanded(
+                  child: DecoratedBox(
+                    key: Key('progress-action-${action.type}'),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.horizontal(
+                        left: Radius.circular(ScreenAdapter.width(8)),
+                        right: Radius.circular(ScreenAdapter.width(8)),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        action.label,
+                        style: _actionTextStyle(
+                          presentation.isRed
+                              ? AppColors.alert
+                              : AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .toList(growable: false),
+        ),
+      );
+    }
     return SizedBox(
       height: ScreenAdapter.height(40),
       child: Row(
@@ -361,9 +479,11 @@ class _ProgressPresentation {
   final bool isRed;
   final bool isFailed;
 
-  factory _ProgressPresentation.from(String emblemize) {
+  factory _ProgressPresentation.from(int emblemize, String serverLabel) {
+    final fallback = serverLabel.trim();
     switch (emblemize) {
       case ProgressEmblemize.disbursementFailed:
+      case ProgressEmblemize.disbursementFailedAlternative:
         return const _ProgressPresentation(
           label: 'Disbursement Failed',
           amountLabel: 'Loan Amount',
@@ -371,7 +491,7 @@ class _ProgressPresentation {
           actions: true,
           isRed: false,
           isFailed: true,
-        );
+        ).withLabel(fallback);
       case ProgressEmblemize.disbursing:
         return const _ProgressPresentation(
           label: 'Disbursing',
@@ -380,7 +500,7 @@ class _ProgressPresentation {
           actions: false,
           isRed: false,
           isFailed: false,
-        );
+        ).withLabel(fallback);
       case ProgressEmblemize.activeLoan:
         return const _ProgressPresentation(
           label: 'Active Loan',
@@ -389,7 +509,7 @@ class _ProgressPresentation {
           actions: true,
           isRed: true,
           isFailed: false,
-        );
+        ).withLabel(fallback);
       case ProgressEmblemize.overdue:
         return const _ProgressPresentation(
           label: 'Overdue',
@@ -398,7 +518,7 @@ class _ProgressPresentation {
           actions: true,
           isRed: true,
           isFailed: false,
-        );
+        ).withLabel(fallback);
       case ProgressEmblemize.inReview:
         return const _ProgressPresentation(
           label: 'In Review',
@@ -407,10 +527,10 @@ class _ProgressPresentation {
           actions: false,
           isRed: false,
           isFailed: false,
-        );
+        ).withLabel(fallback);
       default:
         return _ProgressPresentation(
-          label: emblemize,
+          label: fallback.isEmpty ? 'In Review' : fallback,
           amountLabel: 'Loan Amount',
           dateLabel: 'Loan Date',
           actions: false,
@@ -418,5 +538,18 @@ class _ProgressPresentation {
           isFailed: false,
         );
     }
+  }
+
+  _ProgressPresentation withLabel(String serverLabel) {
+    return serverLabel.isEmpty
+        ? this
+        : _ProgressPresentation(
+            label: serverLabel,
+            amountLabel: amountLabel,
+            dateLabel: dateLabel,
+            actions: actions,
+            isRed: isRed,
+            isFailed: isFailed,
+          );
   }
 }

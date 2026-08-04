@@ -76,17 +76,17 @@ class DaliProductNavigationFlow {
         return;
       }
       if (states['tucking'].intValue != 200) {
-        await dismissLoading();
         final message = states['detainment'].stringValue.trim();
         if (message.isNotEmpty) {
           await showNotice(message);
+        } else {
+          await dismissLoading();
         }
         return;
       }
       await loadProductDetail(normalizedProductId);
       await dismissLoading();
     } catch (error) {
-      await dismissLoading();
       await showError(resolveError(error));
     }
   }

@@ -75,7 +75,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/位图@3x.png
+    - assets/orders/
+    - assets/progress/
     - assets/account/
     - assets/login/
     - assets/home/

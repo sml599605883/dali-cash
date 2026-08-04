@@ -1,5 +1,6 @@
 import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/features/home/home_data.dart';
+import 'package:dali_cash/features/progress/progress_item.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -78,6 +79,41 @@ void main() {
                 },
               ],
             },
+            {
+              'sociologeses': 'PROCESS_LIST',
+              'jambes': [
+                {
+                  'titled': 'order-1',
+                  'highlands': 9,
+                  'studdies': 'Server Cash',
+                  'tricky': 'https://example.com/progress-logo.png',
+                  'injective': 2000,
+                  'betattered': 'Loan Amount',
+                  'totalist': '28-12-2022',
+                  'relativize': 'Application date',
+                  'emblemize': 5,
+                  'alternation': 'PHP 2,000.00',
+                  'interterm': 'Disbursement Failed',
+                  'millipede': 'dali://order/order-1',
+                  'psychographs': [
+                    {
+                      'sociologeses': 'retry',
+                      'deloused': 1,
+                      'barbeque': 'Retry Original Account',
+                      'rowboat': '',
+                      'ailing': '',
+                    },
+                    {
+                      'sociologeses': 'change',
+                      'deloused': 0,
+                      'barbeque': 'Change Account',
+                      'rowboat': '',
+                      'ailing': '',
+                    },
+                  ],
+                },
+              ],
+            },
           ],
         }),
       );
@@ -113,6 +149,22 @@ void main() {
       expect(recommendation.loanTerm, '120 days');
       expect(recommendation.footer, 'Fast approval / No collateral');
       expect(recommendation.upscales, 42);
+
+      final progress = data.progressItems.single;
+      expect(progress.orderNumber, 'order-1');
+      expect(progress.productId, '9');
+      expect(progress.productName, 'Server Cash');
+      expect(progress.productLogo, 'https://example.com/progress-logo.png');
+      expect(progress.amount, 'PHP 2,000.00');
+      expect(progress.amountLabel, 'Loan Amount');
+      expect(progress.date, '28-12-2022');
+      expect(progress.dateLabel, 'Application date');
+      expect(progress.emblemize, ProgressEmblemize.disbursementFailed);
+      expect(progress.statusLabel, 'Disbursement Failed');
+      expect(progress.detailRoute, 'dali://order/order-1');
+      expect(progress.actions, hasLength(1));
+      expect(progress.actions.single.type, 'retry');
+      expect(progress.actions.single.label, 'Retry Original Account');
     });
 
     test('converts numeric string fields through Json.stringValue', () {
@@ -227,5 +279,32 @@ void main() {
 
       expect(data.recommendations.single.footer, 'Fast approval / Secure');
     });
+
+    test(
+      'ignores malformed progress items and falls back to numeric amount',
+      () {
+        final data = HomeData.fromJson(
+          Json({
+            'clingiest': [
+              {
+                'sociologeses': 'PROCESS_LIST',
+                'jambes': [
+                  null,
+                  'not-a-map',
+                  {'injective': 1234, 'emblemize': 2},
+                ],
+              },
+            ],
+          }),
+        );
+
+        expect(data.progressItems, hasLength(1));
+        expect(data.progressItems.single.amount, '1234');
+        expect(
+          data.progressItems.single.emblemize,
+          ProgressEmblemize.activeLoan,
+        );
+      },
+    );
   });
 }

@@ -43,6 +43,7 @@ void main() {
   ) async {
     final submissions = <String>[];
     final replacements = <String>[];
+    final loadingEvents = <String>[];
     final pending = Completer<String>();
     await _pumpPage(
       tester,
@@ -52,6 +53,8 @@ void main() {
         return pending.future;
       },
       replace: (url) async => replacements.add(url),
+      showLoading: () async => loadingEvents.add('loading'),
+      dismissLoading: () async => loadingEvents.add('dismiss'),
     );
     await tester.pumpAndSettle();
 
@@ -63,6 +66,7 @@ void main() {
     pending.complete(' https://h5.test/changed ');
     await tester.pumpAndSettle();
     expect(replacements, ['https://h5.test/changed']);
+    expect(loadingEvents, ['loading', 'dismiss']);
   });
 
   testWidgets('shows load error and retries', (tester) async {
@@ -139,11 +143,17 @@ void main() {
     tester,
   ) async {
     final errors = <String>[];
+    final loadingEvents = <String>[];
     await _pumpPage(
       tester,
       load: (_) async => _accounts(),
       submit: ({required orderNo, required bindId}) async => '',
-      showError: (message) async => errors.add(message),
+      showLoading: () async => loadingEvents.add('loading'),
+      dismissLoading: () async => loadingEvents.add('dismiss'),
+      showError: (message) async {
+        loadingEvents.add('error');
+        errors.add(message);
+      },
     );
     await tester.pumpAndSettle();
 
@@ -151,6 +161,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(errors, ['Missing account change result url']);
+    expect(loadingEvents, ['loading', 'error']);
     expect(
       tester
           .widget<ElevatedButton>(find.byKey(const Key('accountListConfirm')))
@@ -234,6 +245,8 @@ Future<void> _pumpPage(
   AccountListAddMethod? addMethod,
   AccountListReplace? replace,
   AccountListMessage? showError,
+  AccountListAsyncAction? showLoading,
+  AccountListAsyncAction? dismissLoading,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -255,6 +268,8 @@ Future<void> _pumpPage(
             addMethod ?? ({required productId, required orderNo}) async {},
         replace: replace ?? (_) async {},
         showError: showError ?? (_) async {},
+        showLoading: showLoading ?? () async {},
+        dismissLoading: dismissLoading ?? () async {},
       ),
     ),
   );

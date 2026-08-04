@@ -43,6 +43,8 @@ typedef BindCardCameraPermissionRequester = Future<PermissionStatus> Function();
 typedef BindCardTokenLoad = Future<BindCardLivenessToken> Function();
 typedef BindCardLivenessLauncher =
     Future<TrustDecisionLivenessResult> Function(String license);
+typedef BindCardTrustDecisionReporter =
+    Future<void> Function(TrustDecisionLivenessResult result);
 typedef BindCardAppSettingsOpener = Future<bool> Function();
 
 class BindCardLivenessPayload {
@@ -103,6 +105,7 @@ class BindCardPage extends StatefulWidget {
     this.requestCameraPermission,
     this.loadLivenessToken,
     this.showTrustDecisionLiveness,
+    this.reportTrustDecisionResult,
     this.openAppSettingsPage,
   });
 
@@ -120,6 +123,7 @@ class BindCardPage extends StatefulWidget {
   final BindCardCameraPermissionRequester? requestCameraPermission;
   final BindCardTokenLoad? loadLivenessToken;
   final BindCardLivenessLauncher? showTrustDecisionLiveness;
+  final BindCardTrustDecisionReporter? reportTrustDecisionResult;
   final BindCardAppSettingsOpener? openAppSettingsPage;
 
   @override
@@ -561,6 +565,12 @@ class _BindCardPageState extends State<BindCardPage> {
     final result =
         await (widget.showTrustDecisionLiveness ??
             _defaultShowTrustDecisionLiveness)(token.license);
+    unawaited(
+      (widget.reportTrustDecisionResult ??
+          (value) =>
+              DaliReportService.current?.reportTrustDecisionResult(value) ??
+              Future<void>.value())(result),
+    );
     if (!mounted) return;
     if (!result.success || result.livenessId.trim().isEmpty) {
       await _showError(

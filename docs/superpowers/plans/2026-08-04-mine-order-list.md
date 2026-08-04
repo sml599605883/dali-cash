@@ -20,13 +20,13 @@
 
 ```dart
 test('orderList posts the documented Dali paging and status fields', () async {
-  await client.orderList(status: '174');
+  await client.orderList(status: '4');
 
   final request = adapter.lastRequest!;
   expect(request.method, 'POST');
   expect(request.path, endsWith(ApiEndpoints.orderList));
   expect(request.data, {
-    'anfractuosity': '174',
+    'anfractuosity': '4',
     'redeployments': '1',
     'unornate': '50',
   });

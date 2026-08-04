@@ -1,5 +1,6 @@
 abstract final class AppAssets {
-  static const progressEmpty = 'assets/位图@3x.png';
+  static const progressEmpty = 'assets/progress/progress_empty.png';
+  static const orderEmpty = 'assets/orders/order_empty.png';
 
   static const accountBankLabel = 'assets/account/account_bank_label.png';
   static const accountWalletLabel = 'assets/account/account_wallet_label.png';

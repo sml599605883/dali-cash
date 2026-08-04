@@ -203,27 +203,74 @@ void main() {
     },
   );
 
-  test(
-    'switching to Home dispatches a refresh while other tabs do not',
-    () async {
-      controller.selectedIndex.value = 2;
-      apiClient.homeReplies.add(() async => _homeResponse());
-      apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+  test('every switch into Progress refreshes home without popup', () async {
+    apiClient.homeReplies.addAll([
+      () async => _homeResponse(productId: 'progress-first'),
+      () async => _homeResponse(productId: 'home'),
+      () async => _homeResponse(productId: 'progress-second'),
+    ]);
+    apiClient.dialogReplies.add((_) async => _dialogResponse(0));
 
-      await controller.selectTab(1);
-      expect(apiClient.homeCalls, 0);
-      await controller.selectTab(0);
+    await controller.selectTab(1);
+    expect(controller.selectedIndex.value, 1);
+    expect(apiClient.homeCalls, 1);
+    expect(apiClient.dialogScenes, isEmpty);
 
-      expect(controller.selectedIndex.value, 0);
-      expect(apiClient.homeCalls, 1);
-    },
-  );
+    await controller.selectTab(0);
+    await controller.selectTab(1);
+
+    expect(controller.selectedIndex.value, 1);
+    expect(apiClient.homeCalls, 3);
+    expect(apiClient.dialogScenes, [1]);
+    expect(controller.homeData.value?.loanOffer?.productId, 'progress-second');
+  });
 
   test('selecting the current tab returns without dispatching', () async {
     await controller.selectTab(0);
 
     expect(apiClient.homeCalls, 0);
   });
+
+  test(
+    'Progress failure is retryable and successful retry clears it',
+    () async {
+      apiClient.homeReplies.addAll([
+        () => Future<ApiResponse>.error(
+          ApiBusinessException('Progress unavailable'),
+        ),
+        () async => _homeResponse(productId: 'recovered'),
+      ]);
+
+      await controller.refreshProgress();
+
+      expect(controller.progressError.value, 'Progress unavailable');
+      expect(errors, ['Progress unavailable']);
+      expect(controller.isProgressRefreshing.value, isFalse);
+      expect(apiClient.dialogScenes, isEmpty);
+
+      await controller.refreshProgress();
+
+      expect(controller.progressError.value, isNull);
+      expect(controller.homeData.value?.loanOffer?.productId, 'recovered');
+      expect(apiClient.dialogScenes, isEmpty);
+    },
+  );
+
+  test(
+    'Progress failure preserves the last successful home response',
+    () async {
+      final previous = HomeData.fromJson(Json(const <String, dynamic>{}));
+      controller.homeData.value = previous;
+      apiClient.homeReplies.add(
+        () => Future<ApiResponse>.error(ApiBusinessException('Refresh failed')),
+      );
+
+      await controller.refreshProgress();
+
+      expect(controller.homeData.value, same(previous));
+      expect(controller.progressError.value, 'Refresh failed');
+    },
+  );
 
   test(
     'logged-out protected tab opens login and waits for a second tap',
@@ -407,8 +454,11 @@ void main() {
     expect(apiClient.dialogScenes, [1]);
   });
 
-  test('resume refreshes Home but remains idle on a non-Home tab', () async {
-    apiClient.homeReplies.add(() async => _homeResponse());
+  test('resume refreshes the visible Home or Progress request chain', () async {
+    apiClient.homeReplies.addAll([
+      () async => _homeResponse(),
+      () async => _homeResponse(productId: 'progress-resume'),
+    ]);
     apiClient.dialogReplies.add((_) async => _dialogResponse(0));
 
     controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
@@ -418,7 +468,9 @@ void main() {
     controller.selectedIndex.value = 1;
     controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await pumpEventQueue();
-    expect(apiClient.homeCalls, 1);
+    expect(apiClient.homeCalls, 2);
+    expect(apiClient.dialogScenes, [1]);
+    expect(controller.homeData.value?.loanOffer?.productId, 'progress-resume');
   });
 
   test(
