@@ -17,7 +17,7 @@ Future<ApiClient> bootstrapApiClient({
   int? proxyPort,
 }) async {
   debugPrint('[DaliNetworkDiag] bootstrap started');
-  final bridge = clientBridge ?? apiConfig?.clientBridge ?? ClientBridge();
+  final bridge = clientBridge ?? apiConfig?.clientBridge ?? ClientBridge.shared;
   final config = apiConfig ?? ApiConfig(clientBridge: bridge);
   final store = sessionStore ?? config.sessionStore;
   config

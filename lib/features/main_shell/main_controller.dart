@@ -5,10 +5,15 @@ import 'package:get/get.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/network/api_response.dart';
 import '../../app/navigation/navigation_helper.dart';
+import '../../app/routes/app_routes.dart';
 import '../home/home_data.dart';
+import 'home_popup.dart';
+import 'home_popup_data.dart';
 
 typedef HomeMessagePresenter = void Function(String message);
+typedef HomeAsyncAction = Future<void> Function();
 typedef LoginRouteNavigator = void Function();
 typedef AuthenticatedProductApply = Future<void> Function(String productId);
 
@@ -17,16 +22,22 @@ class MainController extends GetxController with WidgetsBindingObserver {
     ApiClient? apiClient,
     required this.showError,
     required this.showNotice,
+    HomeAsyncAction? showLoading,
+    HomeAsyncAction? dismissLoading,
     LoginRouteNavigator? navigateToLogin,
     AuthenticatedProductApply? onAuthenticatedProductApply,
   }) : _apiClient = apiClient,
        navigateToLogin = navigateToLogin ?? _defaultNavigateToLogin,
+       showLoading = showLoading ?? _defaultAsyncAction,
+       dismissLoading = dismissLoading ?? _defaultAsyncAction,
        onAuthenticatedProductApply =
            onAuthenticatedProductApply ?? _defaultAuthenticatedProductApply;
 
   ApiClient? _apiClient;
   final HomeMessagePresenter showError;
   final HomeMessagePresenter showNotice;
+  final HomeAsyncAction showLoading;
+  final HomeAsyncAction dismissLoading;
   final LoginRouteNavigator navigateToLogin;
   final AuthenticatedProductApply onAuthenticatedProductApply;
 
@@ -39,6 +50,9 @@ class MainController extends GetxController with WidgetsBindingObserver {
   bool _homeRefreshRequesting = false;
   bool _productApplyRequesting = false;
   bool _isReady = false;
+  bool _wasInactive = false;
+  bool _wasInBackground = false;
+  bool _inactiveResumeRefreshConsumed = false;
 
   bool get isRefreshing => _homeRefreshRequesting;
   bool get hasApiClient => _apiClient != null;
@@ -56,14 +70,14 @@ class MainController extends GetxController with WidgetsBindingObserver {
     super.onReady();
     _isReady = true;
     if (hasApiClient) {
-      unawaited(requestHomeDataIfVisible());
+      unawaited(_requestVisibleTabData());
     }
   }
 
   void onNetworkReady(ApiClient client) {
     _apiClient = client;
     if (_isReady) {
-      unawaited(requestHomeDataIfVisible());
+      unawaited(_requestVisibleTabData());
     }
   }
 
@@ -75,13 +89,30 @@ class MainController extends GetxController with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (selectedIndex.value == 1) {
-        unawaited(refreshProgress());
-      } else {
-        unawaited(requestHomeDataIfVisible());
-      }
+    if (state == AppLifecycleState.inactive) {
+      _wasInactive = true;
+      return;
     }
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _wasInBackground = true;
+      return;
+    }
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+
+    final resumedFromBackground = _wasInBackground;
+    final firstInactiveResume = _wasInactive && !_inactiveResumeRefreshConsumed;
+    _wasInactive = false;
+    _wasInBackground = false;
+    if (!resumedFromBackground && !firstInactiveResume) {
+      return;
+    }
+    if (!resumedFromBackground) {
+      _inactiveResumeRefreshConsumed = true;
+    }
+    unawaited(_requestVisibleTabData());
   }
 
   Future<void> selectTab(int index) async {
@@ -95,9 +126,22 @@ class MainController extends GetxController with WidgetsBindingObserver {
     if (index == 2) {
       await refreshStoredPhone();
     }
-    if (index == 0) {
-      await refreshHome();
-    } else if (index == 1) {
+    await _requestVisibleTabData();
+  }
+
+  void returnToHomeTab() {
+    selectedIndex.value = 0;
+    unawaited(_requestVisibleTabData());
+  }
+
+  void onRouteChanged() {
+    unawaited(_requestVisibleTabData());
+  }
+
+  Future<void> _requestVisibleTabData() async {
+    if (_isHomeVisible) {
+      await requestHomeDataIfVisible();
+    } else if (_isProgressVisible) {
       await refreshProgress();
     }
   }
@@ -150,10 +194,19 @@ class MainController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> requestHomeDataIfVisible() async {
-    if (selectedIndex.value != 0) {
+    if (!_isHomeVisible) {
       return;
     }
-    await refreshHome();
+    await _requestHomeData(showPopup: true, presentLoading: true);
+  }
+
+  bool get _isHomeVisible => selectedIndex.value == 0 && _isMainRoute;
+
+  bool get _isProgressVisible => selectedIndex.value == 1 && _isMainRoute;
+
+  bool get _isMainRoute {
+    final route = Get.currentRoute;
+    return route.isEmpty || route == AppRoutes.home;
   }
 
   Future<bool> _ensureLoggedIn() async {
@@ -170,7 +223,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> refreshHome() async {
-    await _requestHomeData(showPopup: true);
+    await _requestHomeData(showPopup: true, presentLoading: true);
   }
 
   Future<void> refreshProgress() async {
@@ -188,6 +241,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
 
   Future<bool> _requestHomeData({
     required bool showPopup,
+    bool presentLoading = false,
     bool reportProgressError = false,
   }) async {
     final client = _apiClient;
@@ -195,14 +249,36 @@ class MainController extends GetxController with WidgetsBindingObserver {
       return false;
     }
     _homeRefreshRequesting = true;
+    var homeLoadingVisible = false;
+    if (presentLoading) {
+      unawaited(showLoading());
+      homeLoadingVisible = true;
+    }
+    final homeRequest = client.homePage();
+    Future<ApiResponse>? popupRequest;
+    if (showPopup) {
+      try {
+        popupRequest = client.dialog(scene: 1);
+      } catch (_) {
+        popupRequest = null;
+      }
+    }
+    if (popupRequest != null) {
+      unawaited(_handleHomePopup(popupRequest));
+    }
     try {
       try {
-        final response = await client.homePage();
+        final response = await homeRequest;
         homeData.value = HomeData.fromJson(response.states);
+        if (homeLoadingVisible) {
+          await dismissLoading();
+          homeLoadingVisible = false;
+        }
         if (reportProgressError) {
           progressError.value = null;
         }
       } catch (error) {
+        homeLoadingVisible = false;
         if (reportProgressError) {
           progressError.value = _resolvedError(error);
         }
@@ -210,20 +286,29 @@ class MainController extends GetxController with WidgetsBindingObserver {
         return false;
       }
 
-      if (showPopup) {
-        try {
-          final response = await client.dialog(scene: 1);
-          final type = response.states['sociologeses'].intValue;
-          if (type == 1 || type == 2 || type == 3) {
-            showNotice('New information available');
-          }
-        } catch (_) {
-          // Popup failures must not invalidate successfully loaded home content.
-        }
-      }
       return true;
     } finally {
+      if (homeLoadingVisible) {
+        await dismissLoading();
+      }
       _homeRefreshRequesting = false;
+    }
+  }
+
+  Future<void> _handleHomePopup(Future<ApiResponse> request) async {
+    try {
+      final response = await request;
+      final popup = HomePopupData.fromResponse(response.states);
+      if (await HomePopup.show(popup)) {
+        return;
+      }
+      if (popup.type == HomePopupType.appUpgrade ||
+          popup.type == HomePopupType.membershipUpgrade ||
+          popup.type == HomePopupType.marketing) {
+        showNotice('New information available');
+      }
+    } catch (_) {
+      // Popup failures must not invalidate successfully loaded home content.
     }
   }
 
@@ -239,3 +324,5 @@ void _defaultNavigateToLogin() {
 Future<void> _defaultAuthenticatedProductApply(String productId) async {
   await NavigationHelper.applyProduct(productId);
 }
+
+Future<void> _defaultAsyncAction() async {}

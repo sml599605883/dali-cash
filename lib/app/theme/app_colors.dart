@@ -18,6 +18,7 @@ abstract final class AppColors {
   static const divider = Color.fromRGBO(242, 242, 242, 1);
   static const surface = Color.fromRGBO(255, 255, 255, 1);
   static const pageBackground = Color.fromRGBO(244, 244, 244, 1);
+  static const recreditText = Color.fromRGBO(24, 28, 23, 1);
   static const textStrong = Color.fromRGBO(8, 11, 21, 1);
   static const textDetail = Color.fromRGBO(90, 90, 90, 1);
   static const dialogText = Color.fromRGBO(3, 26, 3, 1);

@@ -100,10 +100,12 @@ class ClientBridge {
 
   static const channelName = 'dali_cash/client_bridge';
   static const eventChannelName = 'dali_cash/client_events';
+  static final shared = ClientBridge();
 
   final ClientPlatform _platform;
   final MethodChannel _channel;
   final EventChannel _eventChannel;
+  Stream<Json>? _reportEventStream;
 
   bool get supportsNativeBridge => _platform == ClientPlatform.ios;
 
@@ -232,10 +234,11 @@ class ClientBridge {
 
   Stream<Json> reportEvents() {
     if (!supportsNativeBridge) return const Stream<Json>.empty();
-    return _eventChannel
+    return _reportEventStream ??= _eventChannel
         .receiveBroadcastStream()
         .map(Json.new)
-        .handleError((_) {});
+        .handleError((_) {})
+        .asBroadcastStream();
   }
 
   Future<Map<Object?, Object?>?> _safeInvokeMap(String method) async {

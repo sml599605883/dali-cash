@@ -3,6 +3,7 @@ enum DaliDeepLinkKind {
   mine,
   login,
   productDetail,
+  recredit,
   unavailable,
   webView,
   unsupportedDali,
@@ -120,10 +121,9 @@ class DaliDeepLinkParser {
       'setting' || 'VeinedYachting' => DaliDeepLinkKind.mine,
       '/login' || 'login' || 'TortoiseBerkelium' => DaliDeepLinkKind.login,
       'productDetail' || 'Conifer' => DaliDeepLinkKind.productDetail,
+      'recredit' || 'Heed' => DaliDeepLinkKind.recredit,
       'order' ||
       'Luminance' ||
-      'recredit' ||
-      'Heed' ||
       'apiRemindUrl' ||
       'Mateys' => DaliDeepLinkKind.unavailable,
       _ => null,

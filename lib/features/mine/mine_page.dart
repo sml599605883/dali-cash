@@ -4,16 +4,24 @@ import 'package:dali_cash/app/layout/screen_adapter.dart';
 import 'package:dali_cash/app/navigation/navigation_helper.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
+import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/features/main_shell/main_controller.dart';
+import 'package:dali_cash/features/mine/account_session_coordinator.dart';
 import 'package:dali_cash/features/orders/order_list_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class MinePage extends StatefulWidget {
-  const MinePage({super.key, this.loadAppVersion});
+  const MinePage({
+    super.key,
+    this.loadAppVersion,
+    this.accountSessionCoordinator,
+  });
 
   final Future<String> Function()? loadAppVersion;
+  final AccountSessionCoordinator? accountSessionCoordinator;
 
   @override
   State<MinePage> createState() => _MinePageState();
@@ -59,7 +67,11 @@ class _MinePageState extends State<MinePage> {
                       SizedBox(height: ScreenAdapter.height(16)),
                       const _CustomerServiceSection(),
                       SizedBox(height: ScreenAdapter.height(16)),
-                      _AboutUsSection(versionFuture: _versionFuture),
+                      _AboutUsSection(
+                        versionFuture: _versionFuture,
+                        accountSessionCoordinator:
+                            widget.accountSessionCoordinator,
+                      ),
                     ],
                   ),
                 ),
@@ -259,9 +271,8 @@ class _CustomerServiceSection extends StatelessWidget {
           key: const Key('mine-customer-service'),
           iconAsset: AppAssets.mineCustomerService,
           label: 'Smart customer service',
-          onTap: () => NavigationHelper.toWebPath<void>(
-            path: _customerServicePath,
-          ),
+          onTap: () =>
+              NavigationHelper.toWebPath<void>(path: _customerServicePath),
           showChevron: true,
         ),
       ),
@@ -270,11 +281,15 @@ class _CustomerServiceSection extends StatelessWidget {
 }
 
 class _AboutUsSection extends StatelessWidget {
-  const _AboutUsSection({required this.versionFuture});
+  const _AboutUsSection({
+    required this.versionFuture,
+    required this.accountSessionCoordinator,
+  });
 
   static const _privacyAgreementPath = '/#/Turbocharger';
 
   final Future<String> versionFuture;
+  final AccountSessionCoordinator? accountSessionCoordinator;
 
   @override
   Widget build(BuildContext context) {
@@ -308,16 +323,18 @@ class _AboutUsSection extends StatelessWidget {
               key: const Key('mine-privacy-agreement'),
               iconAsset: AppAssets.minePrivacyAgreement,
               label: 'Privacy Agreement',
-              onTap: () => NavigationHelper.toWebPath<void>(
-                path: _privacyAgreementPath,
-              ),
+              onTap: () =>
+                  NavigationHelper.toWebPath<void>(path: _privacyAgreementPath),
               showChevron: true,
             ),
             _MineRow(
               key: const Key('mine-account'),
               iconAsset: AppAssets.mineAccount,
               label: 'Account',
-              onTap: () => _showAccountActions(context),
+              onTap: () => _showAccountActions(
+                context,
+                accountSessionCoordinator: accountSessionCoordinator,
+              ),
               showChevron: true,
             ),
           ],
@@ -615,7 +632,10 @@ void _logAndReturnAccountAction(BuildContext context, _AccountAction action) {
   Navigator.of(context).pop(action);
 }
 
-Future<void> _showAccountActions(BuildContext context) async {
+Future<void> _showAccountActions(
+  BuildContext context, {
+  AccountSessionCoordinator? accountSessionCoordinator,
+}) async {
   _logTap('Account');
   final action = await showGeneralDialog<_AccountAction>(
     context: context,
@@ -631,7 +651,11 @@ Future<void> _showAccountActions(BuildContext context) async {
     },
   );
   if (action != null && context.mounted) {
-    await _showRetentionDialog(context, action);
+    await _showRetentionDialog(
+      context,
+      action,
+      accountSessionCoordinator: accountSessionCoordinator,
+    );
   }
 }
 
@@ -649,8 +673,9 @@ class _RetentionDialogData {
 
 Future<void> _showRetentionDialog(
   BuildContext context,
-  _AccountAction action,
-) async {
+  _AccountAction action, {
+  AccountSessionCoordinator? accountSessionCoordinator,
+}) async {
   final data = action == _AccountAction.logOut
       ? const _RetentionDialogData(
           body:
@@ -672,7 +697,11 @@ Future<void> _showRetentionDialog(
     barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return _AccountRetentionDialog(data: data);
+      return _AccountRetentionDialog(
+        data: data,
+        action: action,
+        accountSessionCoordinator: accountSessionCoordinator,
+      );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return FadeTransition(opacity: animation, child: child);
@@ -680,10 +709,24 @@ Future<void> _showRetentionDialog(
   );
 }
 
-class _AccountRetentionDialog extends StatelessWidget {
-  const _AccountRetentionDialog({required this.data});
+class _AccountRetentionDialog extends StatefulWidget {
+  const _AccountRetentionDialog({
+    required this.data,
+    required this.action,
+    required this.accountSessionCoordinator,
+  });
 
   final _RetentionDialogData data;
+  final _AccountAction action;
+  final AccountSessionCoordinator? accountSessionCoordinator;
+
+  @override
+  State<_AccountRetentionDialog> createState() =>
+      _AccountRetentionDialogState();
+}
+
+class _AccountRetentionDialogState extends State<_AccountRetentionDialog> {
+  bool _submitting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -737,7 +780,7 @@ class _AccountRetentionDialog extends StatelessWidget {
                   width: 253 * scale,
                   height: 44 * scale,
                   child: Text(
-                    data.body,
+                    widget.data.body,
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     style: TextStyle(
@@ -756,7 +799,7 @@ class _AccountRetentionDialog extends StatelessWidget {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
-                      _logTap(data.keepLog);
+                      _logTap(widget.data.keepLog);
                       Navigator.of(context).pop();
                     },
                     child: DecoratedBox(
@@ -774,7 +817,7 @@ class _AccountRetentionDialog extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          data.keepLabel,
+                          widget.data.keepLabel,
                           style: TextStyle(
                             color: AppColors.surface,
                             fontSize: 15 * scale,
@@ -790,10 +833,7 @@ class _AccountRetentionDialog extends StatelessWidget {
                 GestureDetector(
                   key: const Key('account-retention-close'),
                   behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    _logTap('Close Anyway');
-                    Navigator.of(context).pop();
-                  },
+                  onTap: _submitting ? null : _closeAnyway,
                   child: Text(
                     'Close Anyway',
                     style: TextStyle(
@@ -810,6 +850,20 @@ class _AccountRetentionDialog extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _closeAnyway() async {
+    _logTap('Close Anyway');
+    setState(() => _submitting = true);
+    final coordinator =
+        widget.accountSessionCoordinator ?? _defaultAccountSessionCoordinator();
+    final succeeded = await coordinator.execute(_sessionAction(widget.action));
+    if (!mounted) return;
+    if (succeeded) {
+      Navigator.of(context).pop();
+    } else {
+      setState(() => _submitting = false);
+    }
   }
 }
 
@@ -828,4 +882,27 @@ Future<String> _resolveAppVersion(Future<String> Function() loader) async {
 
 void _logTap(String entry) {
   debugPrint('[MinePage] $entry tapped');
+}
+
+AccountSessionAction _sessionAction(_AccountAction action) {
+  return switch (action) {
+    _AccountAction.logOut => AccountSessionAction.logout,
+    _AccountAction.deleteAccount => AccountSessionAction.deleteAccount,
+  };
+}
+
+AccountSessionCoordinator _defaultAccountSessionCoordinator() {
+  final apiClient = Get.find<ApiClient>();
+  return AccountSessionCoordinator(
+    apiClient: apiClient,
+    sessionStore: apiClient.config.sessionStore,
+    showLoading: () => EasyLoading.show(status: 'Loading...'),
+    dismissLoading: EasyLoading.dismiss,
+    showError: EasyLoading.showError,
+    returnHome: () async {
+      if (Get.isRegistered<MainController>()) {
+        Get.find<MainController>().returnToHomeTab();
+      }
+    },
+  );
 }

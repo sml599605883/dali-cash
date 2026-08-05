@@ -20,6 +20,7 @@ void main() {
   late _ScriptedApiClient apiClient;
   late List<String> errors;
   late List<String> notices;
+  late List<String> loadingEvents;
   late MainController controller;
 
   setUp(() async {
@@ -30,10 +31,16 @@ void main() {
     apiClient.config.sessionStore = sessionStore;
     errors = <String>[];
     notices = <String>[];
+    loadingEvents = <String>[];
     controller = MainController(
       apiClient: apiClient,
-      showError: errors.add,
+      showError: (message) {
+        errors.add(message);
+        loadingEvents.add('error');
+      },
       showNotice: notices.add,
+      showLoading: () async => loadingEvents.add('loading'),
+      dismissLoading: () async => loadingEvents.add('dismiss'),
     );
   });
 
@@ -62,6 +69,7 @@ void main() {
       'dialog-start',
       'dialog-complete',
     ]);
+    expect(loadingEvents, ['loading', 'dismiss']);
   });
 
   test('GetX update notifications do not trigger a network request', () async {
@@ -89,6 +97,7 @@ void main() {
       );
       expect(apiClient.homeCalls, 1);
       expect(apiClient.dialogScenes, [1]);
+      expect(loadingEvents, ['loading', 'dismiss']);
     },
   );
 
@@ -107,7 +116,8 @@ void main() {
       controller.homeData.value?.loanOffer?.productId,
       'available-before-popup',
     );
-    expect(controller.isRefreshing, isTrue);
+    expect(controller.isRefreshing, isFalse);
+    expect(loadingEvents, ['loading', 'dismiss']);
 
     dialogCompleter.complete(_dialogResponse(0));
     await request;
@@ -138,7 +148,7 @@ void main() {
   });
 
   test(
-    'home business failure preserves data, reports it, and skips popup',
+    'home failure preserves data while popup request runs independently',
     () async {
       final previous = HomeData.fromJson(Json(const <String, dynamic>{}));
       controller.homeData.value = previous;
@@ -151,7 +161,7 @@ void main() {
 
       expect(controller.homeData.value, same(previous));
       expect(errors, ['Home unavailable']);
-      expect(apiClient.dialogScenes, isEmpty);
+      expect(apiClient.dialogScenes, [1]);
       expect(controller.isRefreshing, isFalse);
     },
   );
@@ -164,7 +174,7 @@ void main() {
     await controller.requestHomeDataIfVisible();
 
     expect(errors, ['Request failed']);
-    expect(apiClient.dialogScenes, isEmpty);
+    expect(apiClient.dialogScenes, [1]);
   });
 
   test('popup failure stays silent and retains loaded home data', () async {
@@ -230,6 +240,25 @@ void main() {
 
     expect(apiClient.homeCalls, 0);
   });
+
+  test(
+    'returning to Home from a protected tab refreshes visible data',
+    () async {
+      controller.selectedIndex.value = 2;
+      apiClient.homeReplies.add(
+        () async => _homeResponse(productId: 'after-exit'),
+      );
+      apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+
+      controller.returnToHomeTab();
+      await pumpEventQueue();
+
+      expect(controller.selectedIndex.value, 0);
+      expect(apiClient.homeCalls, 1);
+      expect(apiClient.dialogScenes, [1]);
+      expect(controller.homeData.value?.loanOffer?.productId, 'after-exit');
+    },
+  );
 
   test(
     'Progress failure is retryable and successful retry clears it',
@@ -454,24 +483,58 @@ void main() {
     expect(apiClient.dialogScenes, [1]);
   });
 
-  test('resume refreshes the visible Home or Progress request chain', () async {
-    apiClient.homeReplies.addAll([
-      () async => _homeResponse(),
-      () async => _homeResponse(productId: 'progress-resume'),
-    ]);
+  test(
+    'background resume refreshes the visible Home or Progress chain',
+    () async {
+      apiClient.homeReplies.addAll([
+        () async => _homeResponse(),
+        () async => _homeResponse(productId: 'progress-resume'),
+      ]);
+      apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+
+      controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await pumpEventQueue();
+      expect(apiClient.homeCalls, 1);
+
+      controller.selectedIndex.value = 1;
+      controller.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await pumpEventQueue();
+      expect(apiClient.homeCalls, 2);
+      expect(apiClient.dialogScenes, [1]);
+      expect(
+        controller.homeData.value?.loanOffer?.productId,
+        'progress-resume',
+      );
+    },
+  );
+
+  test('inactive resume refreshes only once per controller lifetime', () async {
+    apiClient.homeReplies.add(() async => _homeResponse());
     apiClient.dialogReplies.add((_) async => _dialogResponse(0));
 
+    controller.didChangeAppLifecycleState(AppLifecycleState.inactive);
     controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await pumpEventQueue();
     expect(apiClient.homeCalls, 1);
 
-    controller.selectedIndex.value = 1;
+    controller.didChangeAppLifecycleState(AppLifecycleState.inactive);
     controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await pumpEventQueue();
-    expect(apiClient.homeCalls, 2);
-    expect(apiClient.dialogScenes, [1]);
-    expect(controller.homeData.value?.loanOffer?.productId, 'progress-resume');
+    expect(apiClient.homeCalls, 1);
   });
+
+  test(
+    'resumed without an inactive or background transition is ignored',
+    () async {
+      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await pumpEventQueue();
+
+      expect(apiClient.homeCalls, 0);
+      expect(apiClient.dialogScenes, isEmpty);
+    },
+  );
 
   test(
     'WidgetsBinding resume dispatches only while controller is observing',

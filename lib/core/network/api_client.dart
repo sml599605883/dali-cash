@@ -61,6 +61,24 @@ class ApiClient {
     return get(ApiEndpoints.dialog, params: {'guarana': scene});
   }
 
+  Future<ApiResponse> reCredit() {
+    return get(
+      ApiEndpoints.reCredit,
+      params: {'marksmanship': _randomDigits(6)},
+    );
+  }
+
+  Future<ApiResponse> logout() {
+    return get(
+      ApiEndpoints.logout,
+      params: {'rivulose': _randomDigits(6), 'transfection': _randomDigits(6)},
+    );
+  }
+
+  Future<ApiResponse> userDelete() {
+    return get(ApiEndpoints.userDelete, params: {'tautogs': _randomDigits(6)});
+  }
+
   Future<ApiResponse> bannerClickRecord({required String bannerConfigId}) {
     return post(
       ApiEndpoints.bannerClickRecord,

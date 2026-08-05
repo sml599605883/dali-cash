@@ -22,7 +22,7 @@ class ApiConfig {
     this.authExpiredHandler,
     this.timestampProvider,
     this.randomDigitsProvider,
-  }) : clientBridge = clientBridge ?? ClientBridge(),
+  }) : clientBridge = clientBridge ?? ClientBridge.shared,
        _sessionStore = sessionStore;
 
   String apiBaseUrl;

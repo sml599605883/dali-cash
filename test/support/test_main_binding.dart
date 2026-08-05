@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_response.dart';
+import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
 import 'package:dio/dio.dart';
@@ -15,6 +16,8 @@ MainBinding testMainBinding() {
     apiClient: NoNetworkApiClient(),
     showError: (_) {},
     showNotice: (_) {},
+    showLoading: () async {},
+    dismissLoading: () async {},
   );
 }
 
@@ -27,9 +30,27 @@ class NoNetworkApiClient extends ApiClient {
   }
 
   final Completer<ApiResponse> _homeRequest = Completer<ApiResponse>();
+  int logoutCalls = 0;
+  int userDeleteCalls = 0;
+  Object? logoutError;
+  Object? userDeleteError;
 
   @override
   Future<ApiResponse> homePage() => _homeRequest.future;
+
+  @override
+  Future<ApiResponse> logout() async {
+    logoutCalls++;
+    if (logoutError case final error?) throw error;
+    return ApiResponse(code: 0, message: '', states: Json(null));
+  }
+
+  @override
+  Future<ApiResponse> userDelete() async {
+    userDeleteCalls++;
+    if (userDeleteError case final error?) throw error;
+    return ApiResponse(code: 0, message: '', states: Json(null));
+  }
 
   @override
   Future<ApiResponse> get(

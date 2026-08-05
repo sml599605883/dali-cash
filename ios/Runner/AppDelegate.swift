@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -7,9 +8,13 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    UNUserNotificationCenter.current().delegate = self
     ClientBridgeRegistrar.shared.register(
       with: window?.rootViewController as? FlutterViewController
     )
+    if let payload = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+      ClientBridgeRegistrar.shared.acceptNotificationPayload(payload)
+    }
     application.registerForRemoteNotifications()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -39,6 +44,28 @@ import UIKit
   override func applicationDidBecomeActive(_ application: UIApplication) {
     super.applicationDidBecomeActive(application)
     ClientBridgeRegistrar.shared.publishTrackingStatus()
+  }
+
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let routed = ClientBridgeRegistrar.shared.acceptNotificationPayload(
+      notification.request.content.userInfo
+    )
+    completionHandler(routed ? [] : [.banner, .badge, .sound])
+  }
+
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    ClientBridgeRegistrar.shared.acceptNotificationPayload(
+      response.notification.request.content.userInfo
+    )
+    completionHandler()
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {

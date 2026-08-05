@@ -16,12 +16,20 @@ import 'package:dali_cash/features/certification/bind_card/bind_card_page.dart';
 import 'package:dali_cash/features/account/account_list_page.dart';
 import 'package:dali_cash/features/main_shell/main_shell_page.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
+import 'package:dali_cash/features/main_shell/main_controller.dart';
 import 'package:dali_cash/features/orders/mine_order_list_page.dart';
 import 'package:dali_cash/features/webview/dali_webview_page.dart';
+import 'package:dali_cash/features/recredit/recredit_page.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
+
+final NavigatorObserver _mainRouteChangeNotifier = PageRouteChangeNotifier(() {
+  if (Get.isRegistered<MainController>()) {
+    Get.find<MainController>().onRouteChanged();
+  }
+});
 
 class DaliCashApp extends StatelessWidget {
   const DaliCashApp({super.key, this.initialBinding});
@@ -33,7 +41,7 @@ class DaliCashApp extends StatelessWidget {
       title: 'Dali Cash',
       debugShowCheckedModeBanner: false,
       builder: EasyLoading.init(),
-      navigatorObservers: [appRouteObserver],
+      navigatorObservers: [appRouteObserver, _mainRouteChangeNotifier],
       initialBinding: initialBinding ?? MainBinding(),
       getPages: [
         GetPage(
@@ -41,6 +49,7 @@ class DaliCashApp extends StatelessWidget {
           page: () => const LoginPage(),
           binding: LoginBinding(),
         ),
+        GetPage(name: AppRoutes.recredit, page: () => const RecreditPage()),
         GetPage(
           name: AppRoutes.identitySelection,
           page: () => const IdentitySelectionPage(),

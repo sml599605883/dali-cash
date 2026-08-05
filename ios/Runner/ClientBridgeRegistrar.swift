@@ -18,6 +18,7 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
   private let deviceSnapshotCollector = DaliDeviceSnapshotCollector()
   private var hasConfiguredTrustDecision = false
   private var eventSink: FlutterEventSink?
+  private var pendingNotificationRoutes: [String] = []
   private var locationManager: CLLocationManager?
   private var locationResult: FlutterResult?
   private var pushToken = ""
@@ -92,6 +93,10 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     if !pushToken.isEmpty {
       events(["type": "push_token", "token": pushToken])
     }
+    while !pendingNotificationRoutes.isEmpty {
+      let route = pendingNotificationRoutes.removeFirst()
+      events(["type": "push_route", "url": route])
+    }
     return nil
   }
 
@@ -104,6 +109,45 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     pushToken = token
     guard !token.isEmpty else { return }
     eventSink?(["type": "push_token", "token": token])
+  }
+
+  @discardableResult
+  func acceptNotificationPayload(_ userInfo: [AnyHashable: Any]) -> Bool {
+    guard let route = notificationRoute(from: userInfo) else {
+      return false
+    }
+    guard let eventSink else {
+      pendingNotificationRoutes.append(route)
+      return true
+    }
+    eventSink(["type": "push_route", "url": route])
+    return true
+  }
+
+  private func notificationRoute(from userInfo: [AnyHashable: Any]) -> String? {
+    if let route = normalizedNotificationRoute(userInfo["url"]) {
+      return route
+    }
+    if let params = userInfo["params"] as? [AnyHashable: Any] {
+      return normalizedNotificationRoute(params["url"])
+    }
+    guard
+      let paramsText = userInfo["params"] as? String,
+      let paramsData = paramsText.data(using: .utf8),
+      let decoded = try? JSONSerialization.jsonObject(with: paramsData),
+      let params = decoded as? [String: Any]
+    else {
+      return nil
+    }
+    return normalizedNotificationRoute(params["url"])
+  }
+
+  private func normalizedNotificationRoute(_ value: Any?) -> String? {
+    guard let value = value as? String else {
+      return nil
+    }
+    let route = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return route.isEmpty ? nil : route
   }
 
   func publishTrackingStatus() {

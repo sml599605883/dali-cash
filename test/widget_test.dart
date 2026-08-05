@@ -4,6 +4,8 @@ import 'package:dali_cash/app/app.dart';
 import 'package:dali_cash/app/layout/screen_adapter.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
+import 'package:dali_cash/core/network/api_client.dart';
+import 'package:dali_cash/core/network/api_exception.dart';
 import 'package:dali_cash/features/home/home_page.dart';
 import 'package:dali_cash/features/mine/mine_page.dart';
 import 'package:dali_cash/features/orders/mine_order_list_page.dart';
@@ -33,6 +35,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(testApp());
+    await Get.find<ApiClient>().config.sessionStore.saveSessionId(
+      'test-session',
+    );
     await tester.tap(find.byKey(const Key('tab-mine')));
     await tester.pump();
   }
@@ -641,6 +646,9 @@ void main() {
     for (final width in <double>[320, 375, 414]) {
       tester.view.physicalSize = Size(width, 812);
       await tester.pumpWidget(testApp());
+      await Get.find<ApiClient>().config.sessionStore.saveSessionId(
+        'test-session',
+      );
       await tester.tap(find.byKey(const Key('tab-mine')));
       await tester.pump();
       await tester.ensureVisible(find.byKey(const Key('mine-account')));
@@ -721,16 +729,46 @@ void main() {
         const Key('account-action-delete'),
       ]) {
         await openRetentionDialog(tester, actionKey);
+        final client = Get.find<ApiClient>() as NoNetworkApiClient;
+        final previousLogoutCalls = client.logoutCalls;
+        final previousDeleteCalls = client.userDeleteCalls;
         messages.clear();
         await tester.tap(find.byKey(const Key('account-retention-close')));
         await tester.pumpAndSettle();
 
         expect(messages, <String>['[MinePage] Close Anyway tapped']);
         expect(find.byKey(const Key('account-retention-dialog')), findsNothing);
+        expect(find.byKey(const Key('tab-home-selected')), findsOneWidget);
+        expect(await client.config.sessionStore.sessionId(), isEmpty);
+        expect(await client.config.sessionStore.phone(), '9620001300');
+        if (actionKey == const Key('account-action-log-out')) {
+          expect(client.logoutCalls, previousLogoutCalls + 1);
+          expect(client.userDeleteCalls, previousDeleteCalls);
+        } else {
+          expect(client.logoutCalls, previousLogoutCalls);
+          expect(client.userDeleteCalls, previousDeleteCalls + 1);
+        }
       }
     } finally {
       debugPrint = originalDebugPrint;
     }
+  });
+
+  testWidgets('keeps retention dialog and session when logout fails', (
+    tester,
+  ) async {
+    await openRetentionDialog(tester, const Key('account-action-log-out'));
+    final client = Get.find<ApiClient>() as NoNetworkApiClient;
+    client.logoutError = ApiBusinessException('logout failed');
+
+    await tester.tap(find.byKey(const Key('account-retention-close')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('account-retention-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('tab-mine-selected')), findsOneWidget);
+    expect(await client.config.sessionStore.sessionId(), 'test-session');
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('rounds the customer service card to the Lanhu radius', (

@@ -52,6 +52,7 @@ abstract final class NavigationHelper {
     'MolehillSubconscious': 'bank',
   };
   static const Set<String> _certificationFlowRouteNames = <String>{
+    AppRoutes.recredit,
     AppRoutes.identitySelection,
     AppRoutes.identityUpload,
     AppRoutes.identityConfirmation,
@@ -178,6 +179,7 @@ abstract final class NavigationHelper {
 
   static Future<T?>? toNamed<T extends Object?>(String routeName) {
     return switch (routeName) {
+      AppRoutes.recredit => toRecredit<T>(),
       AppRoutes.login => toLogin<T>(),
       AppRoutes.identitySelection => toIdentitySelection<T>(),
       AppRoutes.identityFace => toIdentityFace<T>(),
@@ -206,6 +208,13 @@ abstract final class NavigationHelper {
       AppRoutes.mineOrderList,
       arguments: {'initialStatus': initialStatus.code},
     );
+  }
+
+  static Future<T?>? toRecredit<T extends Object?>({Object? arguments}) {
+    if (Get.currentRoute == AppRoutes.recredit) {
+      return null;
+    }
+    return Get.toNamed<T>(AppRoutes.recredit, arguments: arguments);
   }
 
   static void _openTopLevelCertification(
@@ -319,7 +328,7 @@ abstract final class NavigationHelper {
       logger('invalid WebView URL: $url');
       return null;
     }
-    return Get.toNamed<T>(
+    return _toNamedAfterPruningCertificationFlow<T>(
       AppRoutes.webView,
       arguments: {'url': uri.toString(), 'title': title},
     );
@@ -341,6 +350,18 @@ abstract final class NavigationHelper {
     }
     final uri = baseUri.resolve(path.trim());
     return toWebView<T>(url: uri.toString(), title: title);
+  }
+
+  static Future<T?>? _toNamedAfterPruningCertificationFlow<T extends Object?>(
+    String routeName, {
+    Object? arguments,
+  }) {
+    return Get.offNamedUntil<T>(routeName, (route) {
+      final name = route.settings.name;
+      return name != null &&
+          name.isNotEmpty &&
+          !_certificationFlowRouteNames.contains(name);
+    }, arguments: arguments);
   }
 
   static Future<T?>? replaceWebView<T extends Object?>({
@@ -456,6 +477,25 @@ abstract final class NavigationHelper {
           return;
         }
         await _productFlow(Get.find<ApiClient>()).loadProductDetail(productId);
+        return;
+      case DaliDeepLinkKind.recredit:
+        final mergedArguments = <String, dynamic>{
+          ...?target.uri?.queryParameters,
+        };
+        if (target.arguments is Map) {
+          for (final entry in (target.arguments as Map).entries) {
+            mergedArguments[entry.key.toString()] = entry.value;
+          }
+        }
+        final productId = target.productId;
+        if (productId.isNotEmpty) {
+          mergedArguments['highlands'] = productId;
+        }
+        toRecredit<void>(
+          arguments: mergedArguments.isEmpty
+              ? target.arguments
+              : mergedArguments,
+        );
         return;
       case DaliDeepLinkKind.unavailable:
         logger('raw target route not available: ${target.alias}');

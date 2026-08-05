@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dali_cash/app/app.dart';
 import 'package:dali_cash/app/layout/screen_adapter.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
+import 'package:dali_cash/app/routes/app_routes.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
@@ -327,7 +328,7 @@ void main() {
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
-    expect(adapter.events, <String>['home', 'dialog', 'home', 'home', 'home']);
+    expect(adapter.events, <String>['home', 'dialog', 'home', 'home']);
 
     await tester.tap(find.byKey(const Key('tab-home')));
     await tester.pumpAndSettle();
@@ -338,9 +339,6 @@ void main() {
       'dialog',
       'home',
       'home',
-      'home',
-      'home',
-      'dialog',
       'home',
       'dialog',
     ]);
@@ -353,13 +351,62 @@ void main() {
       'home',
       'home',
       'home',
-      'home',
-      'dialog',
-      'home',
       'dialog',
       'home',
       'dialog',
     ]);
+  });
+
+  testWidgets('covered Home stays idle and refreshes after route return', (
+    tester,
+  ) async {
+    final adapter = _HomeDialogAdapter();
+    final client = ApiClient(
+      ApiConfig(
+        apiBaseUrl: 'https://example.test',
+        commonParamsProvider: () async => const <String, dynamic>{},
+        timestampProvider: () => 1,
+        randomDigitsProvider: (length) => '1' * length,
+      ),
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+    client.config.sessionStore = _LoggedInSessionStore();
+    await tester.pumpWidget(
+      DaliCashApp(
+        initialBinding: MainBinding(
+          apiClient: client,
+          showError: (_) {},
+          showNotice: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog']);
+
+    final popup = Get.dialog<void>(
+      const AlertDialog(content: Text('Permission prompt')),
+      transitionDuration: Duration.zero,
+    );
+    await tester.pumpAndSettle();
+    Get.back<void>();
+    await tester.pumpAndSettle();
+    await popup;
+    expect(adapter.events, <String>['home', 'dialog']);
+
+    Get.toNamed<void>(AppRoutes.login);
+    await tester.pumpAndSettle();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog']);
+
+    Get.back<void>();
+    await tester.pumpAndSettle();
+    expect(adapter.events, <String>['home', 'dialog', 'home', 'dialog']);
   });
 
   testWidgets('malformed remote images fall back without crashing', (

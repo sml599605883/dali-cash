@@ -32,6 +32,7 @@ class CertificationRetentionPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = math.min(_designWidth, MediaQuery.sizeOf(context).width - 32);
+    final scale = width / _designWidth;
     return Center(
       child: SizedBox(
         key: cardKey,
@@ -46,79 +47,72 @@ class CertificationRetentionPopup extends StatelessWidget {
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
             Positioned(
-              left: width * 25 / _designWidth,
-              right: width * 25 / _designWidth,
-              bottom: width * 17 / _designWidth,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _ActionButton(
-                      key: exitButtonKey,
-                      label: exitText,
-                      backgroundColor: AppColors.primary,
-                      textColor: AppColors.surface,
-                      onTap: () {
-                        Get.back<void>();
-                        onExit();
-                      },
+              left: 12 * scale,
+              right: 12 * scale,
+              top: 237 * scale,
+              height: 40 * scale,
+              child: GestureDetector(
+                key: continueButtonKey,
+                behavior: HitTestBehavior.opaque,
+                onTap: Get.back<void>,
+                child: Container(
+                  alignment: Alignment.center,
+                  padding: EdgeInsets.symmetric(horizontal: 8 * scale),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.retentionGradientStart,
+                        AppColors.retentionGradientMiddle,
+                        AppColors.retentionGradientEnd,
+                      ],
+                      stops: [0, 0.47929414, 1],
+                    ),
+                    borderRadius: BorderRadius.circular(20 * scale),
+                  ),
+                  child: Text(
+                    continueText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.surface,
+                      fontSize: 15 * scale,
+                      fontWeight: FontWeight.w700,
+                      height: 18 / 15,
                     ),
                   ),
-                  SizedBox(width: width * 10 / _designWidth),
-                  Expanded(
-                    child: _ActionButton(
-                      key: continueButtonKey,
-                      label: continueText,
-                      backgroundColor: AppColors.primary,
-                      textColor: AppColors.surface,
-                      onTap: Get.back<void>,
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12 * scale,
+              right: 12 * scale,
+              top: 293 * scale,
+              height: 18 * scale,
+              child: GestureDetector(
+                key: exitButtonKey,
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  Get.back<void>();
+                  onExit();
+                },
+                child: Center(
+                  child: Text(
+                    exitText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.retentionSecondary,
+                      fontSize: 15 * scale,
+                      fontWeight: FontWeight.w700,
+                      height: 18 / 15,
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    super.key,
-    required this.label,
-    required this.backgroundColor,
-    required this.textColor,
-    required this.onTap,
-  });
-
-  final String label;
-  final Color backgroundColor;
-  final Color textColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
         ),
       ),
     );

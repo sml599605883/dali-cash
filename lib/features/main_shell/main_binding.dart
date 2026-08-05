@@ -13,12 +13,18 @@ class MainBinding extends Bindings {
     this.apiClient,
     HomeMessagePresenter? showError,
     HomeMessagePresenter? showNotice,
+    HomeAsyncAction? showLoading,
+    HomeAsyncAction? dismissLoading,
   }) : showError = showError ?? _showError,
-       showNotice = showNotice ?? _showNotice;
+       showNotice = showNotice ?? _showNotice,
+       showLoading = showLoading ?? _showLoading,
+       dismissLoading = dismissLoading ?? _dismissLoading;
 
   final ApiClient? apiClient;
   final HomeMessagePresenter showError;
   final HomeMessagePresenter showNotice;
+  final HomeAsyncAction showLoading;
+  final HomeAsyncAction dismissLoading;
 
   @override
   void dependencies() {
@@ -35,6 +41,8 @@ class MainBinding extends Bindings {
           apiClient: client,
           showError: showError,
           showNotice: showNotice,
+          showLoading: showLoading,
+          dismissLoading: dismissLoading,
         ),
       );
     }
@@ -53,5 +61,13 @@ class MainBinding extends Bindings {
 
   static void _showNotice(String message) {
     unawaited(EasyLoading.showToast(message));
+  }
+
+  static Future<void> _showLoading() {
+    return EasyLoading.show(status: 'Loading...');
+  }
+
+  static Future<void> _dismissLoading() {
+    return EasyLoading.dismiss();
   }
 }

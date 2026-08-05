@@ -69,6 +69,34 @@ void main() {
     expect(request.queryParameters['guarana'], 1);
   });
 
+  test('reCredit gets documented nonce field', () async {
+    await client.reCredit();
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith(ApiEndpoints.reCredit));
+    expect(request.queryParameters['marksmanship'], '123456');
+  });
+
+  test('logout gets documented obfuscation fields', () async {
+    await client.logout();
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith(ApiEndpoints.logout));
+    expect(request.queryParameters['rivulose'], '123456');
+    expect(request.queryParameters['transfection'], '123456');
+  });
+
+  test('userDelete gets documented obfuscation field', () async {
+    await client.userDelete();
+
+    final request = adapter.lastRequest!;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith(ApiEndpoints.userDelete));
+    expect(request.queryParameters['tautogs'], '123456');
+  });
+
   test('bannerClickRecord posts documented id and generated value', () async {
     await client.bannerClickRecord(bannerConfigId: 'banner-42');
 

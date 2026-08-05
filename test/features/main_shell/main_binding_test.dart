@@ -46,6 +46,8 @@ void main() {
       apiClient: client,
       showError: errors.add,
       showNotice: notices.add,
+      showLoading: () async {},
+      dismissLoading: () async {},
     ).dependencies();
 
     expect(Get.find<ApiClient>(), same(client));
@@ -54,7 +56,8 @@ void main() {
     await controller.requestHomeDataIfVisible();
 
     expect(errors, ['Home unavailable']);
-    expect(notices, ['New information available']);
+    await pumpEventQueue();
+    expect(notices, ['New information available', 'New information available']);
   });
 
   test('preserves a pre-registered client when creating controller', () {

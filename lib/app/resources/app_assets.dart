@@ -1,4 +1,11 @@
 abstract final class AppAssets {
+  static const homePopupUpgradeBackground = 'assets/编组@3x.png';
+  static const homePopupMarketingClose = 'assets/编组@3x (1).png';
+  static const recreditIllustration =
+      'assets/recredit/recredit_illustration.png';
+  static const recreditProgressTrack =
+      'assets/recredit/recredit_progress_track.png';
+
   static const progressEmpty = 'assets/progress/progress_empty.png';
   static const orderEmpty = 'assets/orders/order_empty.png';
 

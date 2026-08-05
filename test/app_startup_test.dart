@@ -18,6 +18,7 @@ void main() {
     Widget? launchedWidget;
     var bootstrapCalls = 0;
     var permissionStarts = 0;
+    var notificationStarts = 0;
 
     await app_main.startDaliCashApp(
       setPortraitOrientation: () async {
@@ -30,15 +31,20 @@ void main() {
       startPermissionLifecycle: () {
         permissionStarts++;
       },
+      startNotificationRouting: () {
+        notificationStarts++;
+        events.add('notification');
+      },
       runApplication: (widget) {
         events.add('runApp');
         launchedWidget = widget;
       },
     );
 
-    expect(events, ['orientation', 'runApp']);
+    expect(events, ['orientation', 'notification', 'runApp']);
     expect(bootstrapCalls, 0);
     expect(permissionStarts, 0);
+    expect(notificationStarts, 1);
     expect(launchedWidget, isA<DaliCashStartup>());
   });
 

@@ -164,11 +164,16 @@ void main() {
     expect(navigationLogs.single, contains('status=0'));
   });
 
-  test('logs documented routes whose features are not available yet', () async {
+  testWidgets('routes the documented recredit scheme to its waiting page', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
     await NavigationHelper.navigateRawTarget('ph://dali-cash/ios/Heed');
 
-    expect(navigationLogs.single, contains('Heed'));
-    expect(navigationLogs.single, contains('not available'));
+    await tester.pumpAndSettle();
+    expect(Get.currentRoute, AppRoutes.recredit);
+    expect(find.byKey(const Key('recreditStub')), findsOneWidget);
+    expect(navigationLogs, isEmpty);
   });
 
   testWidgets('routes HTTP targets to the internal WebView', (tester) async {
@@ -187,7 +192,9 @@ void main() {
     expect(navigationLogs, isEmpty);
   });
 
-  testWidgets('opens configured H5 paths in the internal WebView', (tester) async {
+  testWidgets('opens configured H5 paths in the internal WebView', (
+    tester,
+  ) async {
     await _pumpRoutes(tester);
     apiClient.config.webBaseUrl = 'https://h5.example';
 
@@ -447,6 +454,27 @@ void main() {
     expect(find.byKey(const Key('identitySelectionStub')), findsNothing);
     expect(find.byKey(const Key('identityUploadStub')), findsNothing);
     expect(find.byKey(const Key('identityConfirmationStub')), findsNothing);
+  });
+
+  testWidgets('final WebView navigation prunes the completed bind-card page', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    await NavigationHelper.toBindCard<void>(productId: 'product-42');
+    await tester.pumpAndSettle();
+
+    NavigationHelper.toWebView<void>(url: 'https://example.test/result');
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(
+      find.byKey(const Key('bindCardStub'), skipOffstage: false),
+      findsNothing,
+    );
+
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('homeStub')), findsOneWidget);
   });
 
   testWidgets('location denial stops apply before the API request', (
@@ -977,6 +1005,11 @@ Future<void> _pumpRoutes(WidgetTester tester) {
           name: AppRoutes.login,
           page: () =>
               const Scaffold(body: Text('Login', key: Key('loginStub'))),
+        ),
+        GetPage(
+          name: AppRoutes.recredit,
+          page: () =>
+              const Scaffold(body: Text('Recredit', key: Key('recreditStub'))),
         ),
         GetPage(
           name: '/middle',

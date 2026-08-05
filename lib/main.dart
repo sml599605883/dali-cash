@@ -3,6 +3,7 @@ import 'package:dali_cash/app/startup/dali_cash_startup.dart';
 import 'package:dali_cash/core/network/api_bootstrap.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/permissions/permission_lifecycle_observer.dart';
+import 'package:dali_cash/core/push/ios_notification_route_coordinator.dart';
 import 'package:dali_cash/features/main_shell/main_binding.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ typedef AppRunner = void Function(Widget app);
 typedef ApiBootstrapper = Future<ApiClient> Function();
 typedef PreferredOrientationSetter = Future<void> Function();
 typedef PermissionLifecycleStarter = void Function();
+typedef NotificationRouteStarter = void Function();
 
 Future<void> main() => startDaliCashApp();
 
@@ -20,9 +22,11 @@ Future<void> startDaliCashApp({
   PreferredOrientationSetter setPortraitOrientation = _setPortraitOrientation,
   PermissionLifecycleStarter startPermissionLifecycle =
       _startPermissionLifecycle,
+  NotificationRouteStarter startNotificationRouting = _startNotificationRouting,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
   await setPortraitOrientation();
+  startNotificationRouting();
   runApplication(
     DaliCashStartup(
       bootstrapApi: bootstrapApi,
@@ -42,4 +46,8 @@ Future<void> _setPortraitOrientation() {
 
 void _startPermissionLifecycle() {
   PermissionLifecycleObserver.instance.start();
+}
+
+void _startNotificationRouting() {
+  IosNotificationRouteCoordinator.instance.start();
 }

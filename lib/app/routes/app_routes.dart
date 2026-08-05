@@ -1,5 +1,7 @@
 abstract final class AppRoutes {
+  static const home = '/';
   static const login = '/login';
+  static const recredit = '/recredit';
   static const identitySelection = '/certification/identity';
   static const identityUpload = '/certification/identity-upload';
   static const identityConfirmation = '/certification/identity-confirmation';
