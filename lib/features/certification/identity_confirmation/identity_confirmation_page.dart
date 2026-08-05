@@ -418,24 +418,6 @@ class _IdentityConfirmationHeader extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Semantics(
-              button: true,
-              label: 'Back',
-              child: InkWell(
-                onTap: Get.back<void>,
-                child: Padding(
-                  padding: EdgeInsets.all(ScreenAdapter.width(8)),
-                  child: Image.asset(
-                    AppAssets.identityBack,
-                    width: ScreenAdapter.width(24),
-                    height: ScreenAdapter.height(24),
-                  ),
-                ),
-              ),
-            ),
-          ),
           Text(
             'ID Verification',
             style: TextStyle(
