@@ -566,12 +566,11 @@ void main() {
     expect(disabled.gradient, isNull);
 
     final normal = _applyDecoration(tester, 0);
-    expect(normal.image, isNull);
-    expect(normal.gradient, isA<LinearGradient>());
-    expect((normal.gradient! as LinearGradient).colors, <Color>[
-      AppColors.recommendationNormalStart,
-      AppColors.recommendationNormalEnd,
-    ]);
+    expect(
+      (normal.image!.image as AssetImage).assetName,
+      AppAssets.recommendationApplyHighlight,
+    );
+    expect(normal.gradient, isNull);
   });
 
   test(

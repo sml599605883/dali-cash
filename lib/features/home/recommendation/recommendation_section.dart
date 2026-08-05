@@ -173,26 +173,16 @@ class _RecommendationCard extends StatelessWidget {
 
   BoxDecoration _applyDecoration(int upscales) {
     return switch (upscales) {
-      1 => const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(AppAssets.recommendationApplyHighlight),
-          fit: BoxFit.fill,
-        ),
-      ),
       -1 => const BoxDecoration(
         image: DecorationImage(
           image: AssetImage(AppAssets.recommendationApplyDisabled),
-          fit: BoxFit.fill,
+          fit: BoxFit.contain,
         ),
       ),
       _ => const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            AppColors.recommendationNormalStart,
-            AppColors.recommendationNormalEnd,
-          ],
+        image: DecorationImage(
+          image: AssetImage(AppAssets.recommendationApplyHighlight),
+          fit: BoxFit.contain,
         ),
       ),
     };
