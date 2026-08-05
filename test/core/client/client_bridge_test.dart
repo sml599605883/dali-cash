@@ -148,6 +148,22 @@ void main() {
     expect(result.message, 'Liveness verification is unavailable.');
   });
 
+  test('requests location permission through the native bridge', () async {
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          return 'authorized_when_in_use';
+        });
+
+    final status = await ClientBridge(
+      platform: ClientPlatform.ios,
+    ).requestLocationPermission();
+
+    expect(status, 'authorized_when_in_use');
+    expect(calls.single.method, 'requestLocationPermission');
+  });
+
   test('does not invoke TrustDecision bridge outside iOS', () async {
     final result = await ClientBridge(
       platform: ClientPlatform.android,

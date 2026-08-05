@@ -21,6 +21,8 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
   private var pendingNotificationRoutes: [String] = []
   private var locationManager: CLLocationManager?
   private var locationResult: FlutterResult?
+  private var locationPermissionManager: CLLocationManager?
+  private var locationPermissionResult: FlutterResult?
   private var pushToken = ""
 
   private override init() {
@@ -60,6 +62,8 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
         self.showTrustDecisionLiveness(call.arguments, result: result)
       case "getReportLocation":
         self.getReportLocation(result)
+      case "requestLocationPermission":
+        self.requestLocationPermission(result)
       case "getReportDeviceSnapshot":
         self.deviceSnapshotCollector.collect(
           idfv: self.stableVendorIdentifier(),
@@ -196,7 +200,7 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     locationResult = result
     let status = manager.authorizationStatus
     if status == .notDetermined {
-      manager.requestWhenInUseAuthorization()
+      finishLocation(locationPayload(location: nil, placemark: nil, status: locationStatus(status)))
     } else if status == .denied || status == .restricted {
       finishLocation(locationPayload(location: nil, placemark: nil, status: locationStatus(status)))
     } else {
@@ -204,7 +208,35 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     }
   }
 
+  private func requestLocationPermission(_ result: @escaping FlutterResult) {
+    guard CLLocationManager.locationServicesEnabled() else {
+      result("service_disabled")
+      return
+    }
+    let manager = CLLocationManager()
+    manager.delegate = self
+    locationPermissionManager = manager
+    locationPermissionResult = result
+    let status = manager.authorizationStatus
+    guard status == .notDetermined else {
+      locationPermissionManager = nil
+      locationPermissionResult = nil
+      result(locationStatus(status))
+      return
+    }
+    manager.requestWhenInUseAuthorization()
+  }
+
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    if manager === locationPermissionManager {
+      let status = manager.authorizationStatus
+      guard status != .notDetermined else { return }
+      let result = locationPermissionResult
+      locationPermissionResult = nil
+      locationPermissionManager = nil
+      result?(locationStatus(status))
+      return
+    }
     guard locationResult != nil else { return }
     let status = manager.authorizationStatus
     if status == .authorizedAlways || status == .authorizedWhenInUse {

@@ -5,12 +5,9 @@ import 'package:get/get.dart';
 
 import '../../core/json/json.dart';
 import '../../core/network/api_client.dart';
-import '../../core/permissions/permission_coordinator.dart';
 import '../../core/report/dali_report_service.dart';
 import 'login_controller.dart';
 
-typedef LoginLocationRequester =
-    Future<CertificationLocationDecision> Function();
 typedef LoginReportAction = Future<void> Function();
 typedef LoginRiskReporter =
     Future<void> Function({
@@ -25,17 +22,13 @@ class LoginBinding extends Bindings {
     this.productId,
     this.startTimeSeconds,
     this.nowSeconds = DaliReportService.nowSeconds,
-    LoginLocationRequester? requestLocation,
     LoginReportAction? reportLoginSuccess,
     LoginRiskReporter? reportRiskScene,
     LoginNavigateBack? navigateBack,
     LoginAsyncAction? showLoading,
     LoginAsyncAction? dismissLoading,
     LoginMessagePresenter? showMessage,
-  }) : requestLocation =
-           requestLocation ??
-           PermissionCoordinator.instance.requestCertificationLocation,
-       reportLoginSuccess = reportLoginSuccess ?? _reportLoginSuccess,
+  }) : reportLoginSuccess = reportLoginSuccess ?? _reportLoginSuccess,
        reportRiskScene = reportRiskScene ?? _reportRiskScene,
        navigateBack = navigateBack ?? _navigateBack,
        showLoading = showLoading ?? _showLoading,
@@ -45,7 +38,6 @@ class LoginBinding extends Bindings {
   final String? productId;
   final int? startTimeSeconds;
   final int Function() nowSeconds;
-  final LoginLocationRequester requestLocation;
   final LoginReportAction reportLoginSuccess;
   final LoginRiskReporter reportRiskScene;
   final LoginNavigateBack navigateBack;
@@ -68,17 +60,14 @@ class LoginBinding extends Bindings {
         dismissLoading: dismissLoading,
         showMessage: showMessage,
         onLoginSuccess: () async {
-          await requestLocation();
           await reportLoginSuccess();
-          if (resolvedProductId.isNotEmpty) {
-            unawaited(
-              reportRiskScene(
-                productId: resolvedProductId,
-                sceneType: '1',
-                startTimeSeconds: resolvedStartTime,
-              ),
-            );
-          }
+          unawaited(
+            reportRiskScene(
+              productId: resolvedProductId,
+              sceneType: '1',
+              startTimeSeconds: resolvedStartTime,
+            ),
+          );
           navigateBack();
         },
       ),
@@ -95,10 +84,11 @@ class LoginBinding extends Bindings {
     required int startTimeSeconds,
   }) {
     return DaliReportService.current?.reportRisk(
-      productId: productId,
-      scene: sceneType,
-      startedAtSeconds: startTimeSeconds,
-    ) ?? Future<void>.value();
+          productId: productId,
+          scene: sceneType,
+          startedAtSeconds: startTimeSeconds,
+        ) ??
+        Future<void>.value();
   }
 
   static void _navigateBack() => Get.back<void>();

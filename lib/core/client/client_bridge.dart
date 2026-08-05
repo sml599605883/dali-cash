@@ -210,6 +210,9 @@ class ClientBridge {
     return location.isValid ? location : null;
   }
 
+  Future<String> requestLocationPermission() =>
+      _safeInvokeString('requestLocationPermission');
+
   Future<DaliDeviceSnapshot> getReportDeviceSnapshot() async {
     final result = await _safeInvokeMap('getReportDeviceSnapshot');
     return DaliDeviceSnapshot.fromMap(result ?? const <Object?, Object?>{});

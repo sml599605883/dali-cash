@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:permission_handler/permission_handler.dart';
 
+import '../client/client_bridge.dart';
+
 typedef NativePermissionRequester = Future<Object?> Function();
 typedef PermissionDelay = Future<void> Function(Duration duration);
 typedef LocationServiceStatusProvider = Future<ServiceStatus> Function();
@@ -150,5 +152,18 @@ Future<PermissionStatus> _defaultLocationStatus() {
 }
 
 Future<PermissionStatus> _defaultLocationRequest() {
+  if (Platform.isIOS) {
+    return ClientBridge.shared.requestLocationPermission().then((status) {
+      return switch (status) {
+        'authorized' ||
+        'authorized_always' ||
+        'authorized_when_in_use' => PermissionStatus.granted,
+        'limited' => PermissionStatus.limited,
+        'restricted' => PermissionStatus.restricted,
+        'permanently_denied' => PermissionStatus.permanentlyDenied,
+        _ => PermissionStatus.denied,
+      };
+    });
+  }
   return Permission.locationWhenInUse.request();
 }
