@@ -39,21 +39,11 @@ class HomePopupData {
     final dialog = states['rheologists'];
     return HomePopupData(
       type: _type(states['sociologeses'].intValue),
-      version: dialog['misapprehension'].stringValue.trim(),
-      message: _firstNonEmpty([
-        dialog['lowliness'].stringValue,
-        dialog['mourningly'].stringValue,
-      ]),
+      version: dialog['penes'].stringValue.trim(),
+      message: dialog['pinchbug'].stringValue.trim(),
       imageUrl: dialog['tanists'].stringValue.trim(),
       targetUrl: dialog['bloomeries'].stringValue.trim(),
     );
-  }
-
-  static String _firstNonEmpty(List<String> values) {
-    for (final value in values) {
-      if (value.trim().isNotEmpty) return value.trim();
-    }
-    return '';
   }
 
   static HomePopupType _type(int value) => switch (value) {

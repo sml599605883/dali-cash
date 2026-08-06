@@ -4,7 +4,6 @@ import 'package:dali_cash/app/app.dart';
 import 'package:dali_cash/app/layout/screen_adapter.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/routes/app_routes.dart';
-import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_endpoints.dart';
@@ -13,6 +12,7 @@ import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/features/home/home_data.dart';
 import 'package:dali_cash/features/home/widgets/home_header.dart';
+import 'package:dali_cash/features/home/widgets/credit_activation_progress.dart';
 import 'package:dali_cash/features/home/widgets/loan_offer_card.dart';
 import 'package:dali_cash/features/home/widgets/promo_banner.dart';
 import 'package:dali_cash/features/login/login_page.dart';
@@ -70,6 +70,60 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('loan terms render up to three succumbs rows', (tester) async {
+    final controller = _registerController();
+    controller.homeData.value = HomeData.fromJson(
+      Json({
+        'clingiest': [
+          {
+            'sociologeses': 'QuininaSpeculation',
+            'jambes': [
+              {
+                'succumbs': [
+                  {
+                    'hypoblast': '2',
+                    'redictates': 'Period',
+                    'counterfeiters': '≤ 0.5% / Day',
+                  },
+                  {
+                    'hypoblast': '3',
+                    'redictates': 'Period',
+                    'counterfeiters': '≤ 0.4% / Day',
+                  },
+                  {
+                    'hypoblast': '4',
+                    'redictates': 'Period',
+                    'counterfeiters': '≤ 0.3% / Day',
+                  },
+                  {
+                    'hypoblast': '5',
+                    'redictates': 'Period',
+                    'counterfeiters': '≤ 0.2% / Day',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpShell(tester);
+
+    for (final value in <String>[
+      '2Period',
+      '3Period',
+      '4Period',
+      '≤ 0.5% / Day',
+      '≤ 0.4% / Day',
+      '≤ 0.3% / Day',
+    ]) {
+      expect(find.text(value), findsOneWidget);
+    }
+    expect(find.text('5Period'), findsNothing);
+    expect(find.text('Loan terms'), findsNothing);
+  });
+
   testWidgets('hides empty delivered sections but keeps static null fallback', (
     tester,
   ) async {
@@ -94,6 +148,54 @@ void main() {
     expect(find.text('Recommendation'), findsNothing);
   });
 
+  testWidgets('shows Credit Activation Progress below the large card', (
+    tester,
+  ) async {
+    final controller = _registerController();
+    controller.homeData.value = HomeData(
+      loanOffer: _deliveredHomeData().loanOffer,
+      banners: const <HomeBannerData>[],
+      recommendations: const <HomeRecommendationData>[],
+      showCreditActivationProgress: true,
+    );
+
+    await _pumpShell(tester);
+
+    expect(find.byType(CreditActivationProgress), findsOneWidget);
+    final loanRect = tester.getRect(
+      find.byKey(const Key('home-loan-offer-card')),
+    );
+    final progressRect = tester.getRect(
+      find.byKey(const Key('home-credit-activation-progress')),
+    );
+    expect(progressRect.top - loanRect.bottom, 16);
+    expect(progressRect.size, const Size(343, 140));
+    expect(find.text('Credit Activation Progress'), findsOneWidget);
+    expect(find.text('Identity'), findsOneWidget);
+    expect(find.text('Living'), findsOneWidget);
+    expect(find.text('Basic information'), findsOneWidget);
+    expect(find.text('Bank Card'), findsOneWidget);
+    expect(find.text('₱ 30,000'), findsOneWidget);
+    expect(find.text('₱ 40,000'), findsOneWidget);
+    expect(find.text('₱ 50,000'), findsOneWidget);
+    expect(find.text('₱ 60,000'), findsOneWidget);
+  });
+
+  testWidgets('hides Credit Activation Progress when lyings is empty', (
+    tester,
+  ) async {
+    final controller = _registerController();
+    controller.homeData.value = HomeData(
+      loanOffer: _deliveredHomeData().loanOffer,
+      banners: const <HomeBannerData>[],
+      recommendations: const <HomeRecommendationData>[],
+    );
+
+    await _pumpShell(tester);
+
+    expect(find.byType(CreditActivationProgress), findsNothing);
+  });
+
   testWidgets('renders server progress data from the shared home response', (
     tester,
   ) async {
@@ -109,6 +211,29 @@ void main() {
     expect(find.text('Application date'), findsOneWidget);
     expect(find.text('Disbursement Failed'), findsOneWidget);
     expect(find.text('Retry Original Account'), findsOneWidget);
+  });
+
+  testWidgets('dispatches Progress card and server action taps', (
+    tester,
+  ) async {
+    final cardItems = <ProgressItem>[];
+    final actionTypes = <String>[];
+    final controller = _registerController(
+      onProgressTap: (item) async => cardItems.add(item),
+      onProgressActionTap: (item, action) async => actionTypes.add(action.type),
+    );
+    controller.homeData.value = _deliveredHomeData();
+    controller.selectedIndex.value = 1;
+
+    await _pumpShell(tester);
+
+    await tester.tap(find.text('Server Cash'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('progress-action-retry')));
+    await tester.pump();
+
+    expect(cardItems.single.productId, '9');
+    expect(actionTypes, ['retry']);
   });
 
   testWidgets('shows Progress loading and retryable first-load error states', (
@@ -617,6 +742,8 @@ MainController _registerController({
   SessionStore? sessionStore,
   LoginRouteNavigator? navigateToLogin,
   AuthenticatedProductApply? onAuthenticatedProductApply,
+  Future<void> Function(ProgressItem)? onProgressTap,
+  Future<void> Function(ProgressItem, ProgressAction)? onProgressActionTap,
 }) {
   final apiClient = _NoNetworkApiClient();
   apiClient.config.sessionStore = sessionStore ?? _LoggedInSessionStore();
@@ -626,6 +753,8 @@ MainController _registerController({
     showNotice: (_) {},
     navigateToLogin: navigateToLogin,
     onAuthenticatedProductApply: onAuthenticatedProductApply,
+    onProgressTap: onProgressTap,
+    onProgressActionTap: onProgressActionTap,
   );
   Get.put<MainController>(controller);
   return controller;
@@ -750,7 +879,26 @@ class _ViewMainController extends MainController {
     required super.showNotice,
     super.navigateToLogin,
     super.onAuthenticatedProductApply,
+    this.onProgressTap,
+    this.onProgressActionTap,
   });
+
+  final Future<void> Function(ProgressItem)? onProgressTap;
+  final Future<void> Function(ProgressItem, ProgressAction)?
+  onProgressActionTap;
+
+  @override
+  Future<void> handleProgressTap(ProgressItem item) async {
+    await onProgressTap?.call(item);
+  }
+
+  @override
+  Future<void> handleProgressActionTap(
+    ProgressItem item,
+    ProgressAction action,
+  ) async {
+    await onProgressActionTap?.call(item, action);
+  }
 
   @override
   void onReady() {

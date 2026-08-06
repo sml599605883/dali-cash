@@ -299,56 +299,76 @@ class _LoanTerms extends StatelessWidget {
       height: 16 / 14,
     );
 
+    final loanTermRows = offer?.loanTermRows ?? const <HomeLoanTermRow>[];
+    if (loanTermRows.isNotEmpty) {
+      return Column(
+        children: [
+          for (final row in loanTermRows)
+            Expanded(
+              child: _LoanTermRow(
+                leftText: row.leftText,
+                rightText: row.rightText,
+                leftStyle: labelStyle,
+                rightStyle: valueStyle,
+              ),
+            ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    offer?.loanTermCaption ?? 'Loan terms',
-                    style: labelStyle,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(offer?.loanTerm ?? '180 Days', style: valueStyle),
-                ),
-              ),
-            ],
+          child: _LoanTermRow(
+            leftText: offer?.loanTermCaption ?? 'Loan terms',
+            rightText: offer?.loanTerm ?? '180 Days',
+            leftStyle: labelStyle,
+            rightStyle: valueStyle,
           ),
         ),
         SizedBox(height: ScreenAdapter.height(16)),
         Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    offer?.interestRateCaption ?? 'Interest rate',
-                    style: labelStyle,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    offer?.interestRate ?? '≤ 0.5% Day',
-                    style: valueStyle,
-                  ),
-                ),
-              ),
-            ],
+          child: _LoanTermRow(
+            leftText: offer?.interestRateCaption ?? 'Interest rate',
+            rightText: offer?.interestRate ?? '≤ 0.5% Day',
+            leftStyle: labelStyle,
+            rightStyle: valueStyle,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoanTermRow extends StatelessWidget {
+  const _LoanTermRow({
+    required this.leftText,
+    required this.rightText,
+    required this.leftStyle,
+    required this.rightStyle,
+  });
+
+  final String leftText;
+  final String rightText;
+  final TextStyle leftStyle;
+  final TextStyle rightStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(leftText, style: leftStyle),
+          ),
+        ),
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(rightText, style: rightStyle),
           ),
         ),
       ],

@@ -10,6 +10,7 @@ import 'package:dali_cash/core/permissions/permission_coordinator.dart';
 import 'package:dali_cash/core/session/session_store.dart';
 import 'package:dali_cash/features/home/home_data.dart';
 import 'package:dali_cash/features/main_shell/main_controller.dart';
+import 'package:dali_cash/features/progress/progress_item.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -300,6 +301,145 @@ void main() {
       expect(controller.progressError.value, 'Refresh failed');
     },
   );
+
+  test(
+    'Progress card routes its server detail target with order context',
+    () async {
+      final targets = <String>[];
+      final arguments = <Object?>[];
+      final value = MainController(
+        apiClient: apiClient,
+        showError: errors.add,
+        showNotice: notices.add,
+        navigateProgressTarget: (target, args) async {
+          targets.add(target);
+          arguments.add(args);
+        },
+      );
+      addTearDown(value.onClose);
+
+      await value.handleProgressTap(
+        const ProgressItem(
+          productId: 'product-42',
+          orderNumber: 'ORDER-42',
+          detailRoute: 'ph://dali-cash/ios/Order',
+          emblemize: ProgressEmblemize.activeLoan,
+        ),
+      );
+
+      expect(targets, ['ph://dali-cash/ios/Order']);
+      expect(arguments.single, {
+        'highlands': 'product-42',
+        'saggards': 'ORDER-42',
+      });
+    },
+  );
+
+  test(
+    'Progress card falls back to product admission without a target',
+    () async {
+      final applied = <String>[];
+      final value = MainController(
+        apiClient: apiClient,
+        showError: errors.add,
+        showNotice: notices.add,
+        onAuthenticatedProductApply: (productId) async =>
+            applied.add(productId),
+      );
+      addTearDown(value.onClose);
+
+      await value.handleProgressTap(
+        const ProgressItem(productId: ' product-7 ', emblemize: 1),
+      );
+
+      expect(applied, ['product-7']);
+    },
+  );
+
+  test(
+    'Progress retry and change actions use their documented handlers',
+    () async {
+      final events = <String>[];
+      final value = MainController(
+        apiClient: apiClient,
+        showError: errors.add,
+        showNotice: notices.add,
+        showLoading: () async => events.add('loading'),
+        dismissLoading: () async => events.add('dismiss'),
+        resolveProgressRetry: (orderNo) async {
+          events.add('retry:$orderNo');
+          return 'https://example.test/retry';
+        },
+        navigateProgressTarget: (target, _) async =>
+            events.add('target:$target'),
+        openProgressAccountChange:
+            ({required productId, required orderNo}) async {
+              events.add('change:$productId:$orderNo');
+            },
+      );
+      addTearDown(value.onClose);
+      const item = ProgressItem(
+        productId: 'product-42',
+        orderNumber: 'ORDER-42',
+        emblemize: ProgressEmblemize.disbursementFailed,
+      );
+
+      await value.handleProgressActionTap(
+        item,
+        const ProgressAction(
+          type: 'retry',
+          visible: true,
+          label: 'Retry',
+          badge: '',
+          route: '',
+        ),
+      );
+      await value.handleProgressActionTap(
+        item,
+        const ProgressAction(
+          type: 'change',
+          visible: true,
+          label: 'Change',
+          badge: '',
+          route: '',
+        ),
+      );
+
+      expect(events, [
+        'loading',
+        'retry:ORDER-42',
+        'dismiss',
+        'target:https://example.test/retry',
+        'loading',
+        'change:product-42:ORDER-42',
+        'dismiss',
+      ]);
+    },
+  );
+
+  test('unknown Progress action is ignored', () async {
+    var called = false;
+    final value = MainController(
+      apiClient: apiClient,
+      showError: errors.add,
+      showNotice: notices.add,
+      navigateProgressTarget: (_, _) async => called = true,
+    );
+    addTearDown(value.onClose);
+
+    await value.handleProgressActionTap(
+      const ProgressItem(productId: 'product-1', emblemize: 1),
+      const ProgressAction(
+        type: 'unsupported',
+        visible: true,
+        label: 'Unsupported',
+        badge: '',
+        route: 'https://example.test/ignored',
+      ),
+    );
+
+    expect(called, isFalse);
+  });
 
   test(
     'logged-out protected tab opens login and waits for a second tap',

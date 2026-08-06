@@ -7,6 +7,7 @@ class HomeData {
     required List<HomeBannerData> banners,
     required List<HomeRecommendationData> recommendations,
     List<ProgressItem> progressItems = const <ProgressItem>[],
+    this.showCreditActivationProgress = false,
   }) : banners = List.unmodifiable(banners),
        recommendations = List.unmodifiable(recommendations),
        progressItems = List.unmodifiable(progressItems);
@@ -60,6 +61,7 @@ class HomeData {
       banners: banners,
       recommendations: recommendations,
       progressItems: progressItems,
+      showCreditActivationProgress: _hasContent(states['lyings']),
     );
   }
 
@@ -67,6 +69,7 @@ class HomeData {
   final List<HomeBannerData> banners;
   final List<HomeRecommendationData> recommendations;
   final List<ProgressItem> progressItems;
+  final bool showCreditActivationProgress;
 }
 
 abstract final class _HomeElementType {
@@ -88,11 +91,13 @@ class HomeLoanOfferData {
     required this.loanTermCaption,
     required this.interestRate,
     required this.interestRateCaption,
+    this.loanTermRows = const <HomeLoanTermRow>[],
     required this.buttonText,
     required this.loanProcessText,
   });
 
   factory HomeLoanOfferData.fromJson(Json json) {
+    final loanTermRows = _loanTermRows(json);
     return HomeLoanOfferData(
       productId: json['underfeeding'].stringValue,
       productName: json['preslaughter'].stringValue,
@@ -103,6 +108,7 @@ class HomeLoanOfferData {
       loanTermCaption: json['typefounder'].stringValue,
       interestRate: json['counterfeiters'].stringValue,
       interestRateCaption: json['euphonically'].stringValue,
+      loanTermRows: loanTermRows,
       buttonText: json['weldor'].stringValue,
       loanProcessText: json['outgnaws'].stringValue,
     );
@@ -117,8 +123,42 @@ class HomeLoanOfferData {
   final String loanTermCaption;
   final String interestRate;
   final String interestRateCaption;
+  final List<HomeLoanTermRow> loanTermRows;
   final String buttonText;
   final String loanProcessText;
+}
+
+class HomeLoanTermRow {
+  const HomeLoanTermRow({required this.leftText, required this.rightText});
+
+  final String leftText;
+  final String rightText;
+}
+
+List<HomeLoanTermRow> _loanTermRows(Json json) {
+  return json['succumbs'].listValue
+      .where((item) => item.mapOrNull != null)
+      .map(
+        (item) => _loanTermRow(
+          item['hypoblast'].stringValue,
+          item['redictates'].stringValue,
+          item['counterfeiters'].stringValue,
+        ),
+      )
+      .whereType<HomeLoanTermRow>()
+      .take(3)
+      .toList();
+}
+
+HomeLoanTermRow? _loanTermRow(
+  String hypoblast,
+  String redictates,
+  String counterfeiters,
+) {
+  final left = '${hypoblast.trim()}${redictates.trim()}';
+  final right = counterfeiters.trim();
+  if (left.isEmpty && right.isEmpty) return null;
+  return HomeLoanTermRow(leftText: left, rightText: right);
 }
 
 class HomeBannerData {
@@ -224,4 +264,15 @@ String _joinTags(Json json) {
       .map((tag) => tag.trim())
       .where((tag) => tag.isNotEmpty)
       .join(' / ');
+}
+
+bool _hasContent(Json json) {
+  final value = json.value;
+  return switch (value) {
+    null => false,
+    String value => value.trim().isNotEmpty,
+    Iterable value => value.isNotEmpty,
+    Map value => value.isNotEmpty,
+    _ => true,
+  };
 }

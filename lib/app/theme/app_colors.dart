@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 abstract final class AppColors {
   static const primary = Color.fromRGBO(60, 108, 243, 1);
+  static const homePopupUpgradeButton = Color.fromRGBO(235, 51, 49, 1);
   static const textPrimary = Color.fromRGBO(51, 51, 51, 1);
   static const textSecondary = Color.fromRGBO(102, 102, 102, 1);
   static const textMuted = Color.fromRGBO(128, 128, 128, 1);
@@ -12,6 +13,15 @@ abstract final class AppColors {
   static const recommendationCaption = Color.fromRGBO(153, 153, 153, 1);
   static const recommendationNormalStart = Color.fromRGBO(246, 18, 18, 1);
   static const recommendationNormalEnd = Color.fromRGBO(249, 167, 25, 1);
+  static const activationProgressGradientStart = Color.fromRGBO(
+    255,
+    172,
+    104,
+    1,
+  );
+  static const activationProgressGradientEnd = Color.fromRGBO(253, 64, 110, 1);
+  static const activationProgressActive = Color.fromRGBO(253, 92, 108, 1);
+  static const activationProgressInactive = Color.fromRGBO(247, 247, 247, 1);
   static const alert = Color.fromRGBO(246, 18, 18, 1);
   static const buttonShadow = Color.fromRGBO(18, 47, 126, 1);
   static const tabUnselected = Color.fromRGBO(140, 140, 140, 1);

@@ -58,6 +58,28 @@ void main() {
                   'typefounder': 'Loan term',
                   'counterfeiters': '1.5% per month',
                   'euphonically': 'Interest rate',
+                  'succumbs': [
+                    {
+                      'hypoblast': '2',
+                      'redictates': 'Period',
+                      'counterfeiters': '≤ 0.5% / Day',
+                    },
+                    {
+                      'hypoblast': '3',
+                      'redictates': 'Period',
+                      'counterfeiters': '≤ 0.4% / Day',
+                    },
+                    {
+                      'hypoblast': '4',
+                      'redictates': 'Period',
+                      'counterfeiters': '≤ 0.3% / Day',
+                    },
+                    {
+                      'hypoblast': '5',
+                      'redictates': 'Period',
+                      'counterfeiters': '≤ 0.2% / Day',
+                    },
+                  ],
                   'weldor': 'Apply now',
                   'outgnaws': 'Complete authentication and unlock your loan',
                 },
@@ -133,6 +155,9 @@ void main() {
       expect(loan.loanTermCaption, 'Loan term');
       expect(loan.interestRate, '1.5% per month');
       expect(loan.interestRateCaption, 'Interest rate');
+      expect(loan.loanTermRows, hasLength(3));
+      expect(loan.loanTermRows.first.leftText, '2Period');
+      expect(loan.loanTermRows.last.rightText, '≤ 0.3% / Day');
       expect(loan.buttonText, 'Apply now');
       expect(
         loan.loanProcessText,
@@ -184,6 +209,29 @@ void main() {
       expect(data.loanOffer?.productId, '42');
       expect(data.loanOffer?.productName, '7');
       expect(data.loanOffer?.amount, '5000');
+    });
+
+    test('shows Credit Activation Progress only for non-empty lyings', () {
+      for (final value in <dynamic>[
+        'identity',
+        <dynamic>['identity'],
+        <String, dynamic>{'step': 'identity'},
+        1,
+      ]) {
+        final data = HomeData.fromJson(Json({'lyings': value}));
+        expect(data.showCreditActivationProgress, isTrue, reason: '$value');
+      }
+
+      for (final value in <dynamic>[
+        null,
+        '',
+        '   ',
+        <dynamic>[],
+        <String, dynamic>{},
+      ]) {
+        final data = HomeData.fromJson(Json({'lyings': value}));
+        expect(data.showCreditActivationProgress, isFalse, reason: '$value');
+      }
     });
 
     test('prioritizes the first LARGE_CARD over SMALL_CARD', () {

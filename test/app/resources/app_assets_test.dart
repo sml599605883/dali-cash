@@ -14,6 +14,25 @@ void main() {
     expect(File(AppAssets.orderEmpty).existsSync(), isTrue);
   });
 
+  test('Credit Activation Progress assets use semantic paths and exist', () {
+    final assets = <String>[
+      AppAssets.activationProgressCoin,
+      AppAssets.activationProgressArrowActive,
+      AppAssets.activationProgressArrowInactive,
+      AppAssets.activationProgressTrack,
+    ];
+
+    expect(assets, <String>[
+      'assets/home/activation_progress_coin.png',
+      'assets/home/activation_progress_arrow_active.png',
+      'assets/home/activation_progress_arrow_inactive.png',
+      'assets/home/activation_progress_track.png',
+    ]);
+    for (final asset in assets) {
+      expect(File(asset).existsSync(), isTrue, reason: asset);
+    }
+  });
+
   test(
     'account assets have semantic names and exactly match the directory',
     () {

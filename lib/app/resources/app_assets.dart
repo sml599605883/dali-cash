@@ -1,6 +1,8 @@
 abstract final class AppAssets {
-  static const homePopupUpgradeBackground = 'assets/编组@3x.png';
-  static const homePopupMarketingClose = 'assets/编组@3x (1).png';
+  static const homePopupUpgradeBackground =
+      'assets/home_popup_upgrade_background.png';
+  static const homePopupMarketingClose =
+      'assets/home_popup_marketing_close.png';
   static const recreditIllustration =
       'assets/recredit/recredit_illustration.png';
   static const recreditProgressTrack =
@@ -68,6 +70,14 @@ abstract final class AppAssets {
       'assets/home/recommendation_apply_highlight.png';
   static const recommendationApplyDisabled =
       'assets/home/recommendation_apply_disabled.png';
+  static const activationProgressCoin =
+      'assets/home/activation_progress_coin.png';
+  static const activationProgressArrowActive =
+      'assets/home/activation_progress_arrow_active.png';
+  static const activationProgressArrowInactive =
+      'assets/home/activation_progress_arrow_inactive.png';
+  static const activationProgressTrack =
+      'assets/home/activation_progress_track.png';
 
   static const tabHomeSelected = 'assets/tabbar/tab_home_selected.png';
   static const tabHomeUnselected = 'assets/tabbar/tab_home_unselected.png';

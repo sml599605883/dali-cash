@@ -11,11 +11,17 @@ import '../../app/routes/app_routes.dart';
 import '../home/home_data.dart';
 import 'home_popup.dart';
 import 'home_popup_data.dart';
+import '../progress/progress_item.dart';
 
 typedef HomeMessagePresenter = void Function(String message);
 typedef HomeAsyncAction = Future<void> Function();
 typedef LoginRouteNavigator = void Function();
 typedef AuthenticatedProductApply = Future<void> Function(String productId);
+typedef ProgressTargetNavigator =
+    Future<void> Function(String target, Object? arguments);
+typedef ProgressRetryResolver = Future<String> Function(String orderNo);
+typedef ProgressAccountResolver =
+    Future<void> Function({required String productId, required String orderNo});
 
 class MainController extends GetxController with WidgetsBindingObserver {
   MainController({
@@ -26,12 +32,20 @@ class MainController extends GetxController with WidgetsBindingObserver {
     HomeAsyncAction? dismissLoading,
     LoginRouteNavigator? navigateToLogin,
     AuthenticatedProductApply? onAuthenticatedProductApply,
+    ProgressTargetNavigator? navigateProgressTarget,
+    ProgressRetryResolver? resolveProgressRetry,
+    ProgressAccountResolver? openProgressAccountChange,
   }) : _apiClient = apiClient,
        navigateToLogin = navigateToLogin ?? _defaultNavigateToLogin,
        showLoading = showLoading ?? _defaultAsyncAction,
        dismissLoading = dismissLoading ?? _defaultAsyncAction,
        onAuthenticatedProductApply =
-           onAuthenticatedProductApply ?? _defaultAuthenticatedProductApply;
+           onAuthenticatedProductApply ?? _defaultAuthenticatedProductApply,
+       navigateProgressTarget =
+           navigateProgressTarget ?? _defaultProgressTargetNavigator,
+       resolveProgressRetry = resolveProgressRetry ?? _defaultProgressRetry,
+       openProgressAccountChange =
+           openProgressAccountChange ?? _defaultProgressAccountChange;
 
   ApiClient? _apiClient;
   final HomeMessagePresenter showError;
@@ -40,6 +54,9 @@ class MainController extends GetxController with WidgetsBindingObserver {
   final HomeAsyncAction dismissLoading;
   final LoginRouteNavigator navigateToLogin;
   final AuthenticatedProductApply onAuthenticatedProductApply;
+  final ProgressTargetNavigator navigateProgressTarget;
+  final ProgressRetryResolver resolveProgressRetry;
+  final ProgressAccountResolver openProgressAccountChange;
 
   final selectedIndex = 0.obs;
   final homeData = Rxn<HomeData>();
@@ -49,6 +66,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
 
   bool _homeRefreshRequesting = false;
   bool _productApplyRequesting = false;
+  bool _progressActionRequesting = false;
   bool _isReady = false;
   bool _wasInactive = false;
   bool _wasInBackground = false;
@@ -167,6 +185,112 @@ class MainController extends GetxController with WidgetsBindingObserver {
       await onAuthenticatedProductApply(normalizedProductId);
     } finally {
       _productApplyRequesting = false;
+    }
+  }
+
+  Future<void> handleProgressTap(ProgressItem item) async {
+    if (_progressActionRequesting) {
+      return;
+    }
+    final productId = item.productId.trim();
+    final orderNo = item.orderNumber.trim();
+    final target = item.detailRoute.trim();
+    if (target.isEmpty && productId.isEmpty) {
+      return;
+    }
+
+    _progressActionRequesting = true;
+    try {
+      if (target.isNotEmpty) {
+        final arguments = <String, dynamic>{
+          if (productId.isNotEmpty) 'highlands': productId,
+          if (orderNo.isNotEmpty) 'saggards': orderNo,
+        };
+        await navigateProgressTarget(
+          target,
+          arguments.isEmpty ? null : arguments,
+        );
+      } else {
+        await applyProduct(productId);
+      }
+    } finally {
+      _progressActionRequesting = false;
+    }
+  }
+
+  Future<void> handleProgressActionTap(
+    ProgressItem item,
+    ProgressAction action,
+  ) async {
+    final type = action.type.trim().toLowerCase();
+    if (_progressActionRequesting) {
+      return;
+    }
+    switch (type) {
+      case 'detail':
+      case 'fallback':
+      case 'repay':
+        await handleProgressTap(item);
+        return;
+      case 'retry':
+        await _retryProgress(item);
+        return;
+      case 'change':
+        await _changeProgressAccount(item);
+        return;
+      default:
+        return;
+    }
+  }
+
+  Future<void> _retryProgress(ProgressItem item) async {
+    final orderNo = item.orderNumber.trim();
+    if (orderNo.isEmpty) {
+      return;
+    }
+    _progressActionRequesting = true;
+    var loadingVisible = false;
+    try {
+      await showLoading();
+      loadingVisible = true;
+      final target = (await resolveProgressRetry(orderNo)).trim();
+      if (target.isEmpty) {
+        throw ApiBusinessException('Missing retry result url');
+      }
+      await dismissLoading();
+      loadingVisible = false;
+      await navigateProgressTarget(target, null);
+    } catch (error) {
+      if (loadingVisible) {
+        await dismissLoading();
+      }
+      showError(_resolvedError(error));
+    } finally {
+      _progressActionRequesting = false;
+    }
+  }
+
+  Future<void> _changeProgressAccount(ProgressItem item) async {
+    final productId = item.productId.trim();
+    final orderNo = item.orderNumber.trim();
+    if (productId.isEmpty || orderNo.isEmpty) {
+      return;
+    }
+    _progressActionRequesting = true;
+    var loadingVisible = false;
+    try {
+      await showLoading();
+      loadingVisible = true;
+      await openProgressAccountChange(productId: productId, orderNo: orderNo);
+      await dismissLoading();
+      loadingVisible = false;
+    } catch (error) {
+      if (loadingVisible) {
+        await dismissLoading();
+      }
+      showError(_resolvedError(error));
+    } finally {
+      _progressActionRequesting = false;
     }
   }
 
@@ -323,6 +447,38 @@ void _defaultNavigateToLogin() {
 
 Future<void> _defaultAuthenticatedProductApply(String productId) async {
   await NavigationHelper.applyProduct(productId);
+}
+
+Future<void> _defaultProgressTargetNavigator(String target, Object? arguments) {
+  return NavigationHelper.navigateRawTarget(target, arguments: arguments);
+}
+
+Future<String> _defaultProgressRetry(String orderNo) async {
+  final response = await Get.find<ApiClient>().retryOriginalAccount(
+    orderNo: orderNo,
+  );
+  return response.ensureSuccess().states['misericorde'].stringValue;
+}
+
+Future<void> _defaultProgressAccountChange({
+  required String productId,
+  required String orderNo,
+}) async {
+  final response = await Get.find<ApiClient>().userAccountList(
+    productId: productId,
+  );
+  if (response.ensureSuccess().states['clingiest'].listValue.isNotEmpty) {
+    NavigationHelper.toAccountList<void>(
+      productId: productId,
+      orderNo: orderNo,
+    );
+  } else {
+    NavigationHelper.toBindCard<void>(
+      productId: productId,
+      orderNo: orderNo,
+      isAccountChange: true,
+    );
+  }
 }
 
 Future<void> _defaultAsyncAction() async {}

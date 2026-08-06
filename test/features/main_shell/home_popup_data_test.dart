@@ -8,8 +8,8 @@ void main() {
       Json({
         'sociologeses': 1,
         'rheologists': {
-          'misapprehension': '1.1.4',
-          'lowliness': 'Install the latest version.',
+          'penes': '1.1.4',
+          'pinchbug': 'Install the latest version.',
           'bloomeries': 'https://store.example.test/app',
         },
       }),

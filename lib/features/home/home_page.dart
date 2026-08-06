@@ -5,6 +5,7 @@ import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/features/home/recommendation/recommendation_section.dart';
 import 'package:dali_cash/features/home/widgets/home_header.dart';
+import 'package:dali_cash/features/home/widgets/credit_activation_progress.dart';
 import 'package:dali_cash/features/home/widgets/loan_offer_card.dart';
 import 'package:dali_cash/features/home/widgets/promo_banner.dart';
 import 'package:dali_cash/features/main_shell/main_controller.dart';
@@ -74,6 +75,11 @@ class HomePage extends GetView<MainController> {
                                           ),
                                         ),
                                 ),
+                              ],
+                              if (delivered?.showCreditActivationProgress ==
+                                  true) ...[
+                                SizedBox(height: ScreenAdapter.height(16)),
+                                const CreditActivationProgress(),
                               ],
                               if (showBanner) ...[
                                 SizedBox(height: ScreenAdapter.height(16)),

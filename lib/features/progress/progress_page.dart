@@ -23,6 +23,8 @@ class ProgressPage extends GetView<MainController> {
         isLoading: controller.isProgressRefreshing.value,
         error: controller.progressError.value,
         onRefresh: controller.refreshProgress,
+        onItemTap: controller.handleProgressTap,
+        onActionTap: controller.handleProgressActionTap,
       ),
     );
   }
@@ -34,12 +36,16 @@ class _ProgressRefreshView extends StatelessWidget {
     required this.onRefresh,
     this.isLoading = false,
     this.error,
+    this.onItemTap,
+    this.onActionTap,
   });
 
   final List<ProgressItem> items;
   final Future<void> Function()? onRefresh;
   final bool isLoading;
   final String? error;
+  final ValueChanged<ProgressItem>? onItemTap;
+  final void Function(ProgressItem, ProgressAction)? onActionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +69,11 @@ class _ProgressRefreshView extends StatelessWidget {
             child: _EmptyProgressContent(),
           )
         else
-          _ProgressItemsSliver(items),
+          _ProgressItemsSliver(
+            items,
+            onItemTap: onItemTap,
+            onActionTap: onActionTap,
+          ),
       ],
     );
 
@@ -133,9 +143,11 @@ class _ProgressError extends StatelessWidget {
 }
 
 class _ProgressItemsSliver extends StatelessWidget {
-  const _ProgressItemsSliver(this.items);
+  const _ProgressItemsSliver(this.items, {this.onItemTap, this.onActionTap});
 
   final List<ProgressItem> items;
+  final ValueChanged<ProgressItem>? onItemTap;
+  final void Function(ProgressItem, ProgressAction)? onActionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +164,13 @@ class _ProgressItemsSliver extends StatelessWidget {
           padding: EdgeInsets.only(
             bottom: index == items.length - 1 ? 0 : ScreenAdapter.height(16),
           ),
-          child: _ProgressCard(item: items[index]),
+          child: _ProgressCard(
+            item: items[index],
+            onTap: onItemTap == null ? null : () => onItemTap!(items[index]),
+            onActionTap: onActionTap == null
+                ? null
+                : (action) => onActionTap!(items[index], action),
+          ),
         ),
       ),
     );
@@ -182,9 +200,11 @@ class _ProgressTitle extends StatelessWidget {
 }
 
 class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.item});
+  const _ProgressCard({required this.item, this.onTap, this.onActionTap});
 
   final ProgressItem item;
+  final VoidCallback? onTap;
+  final ValueChanged<ProgressAction>? onActionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -205,53 +225,62 @@ class _ProgressCard extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Positioned.fill(
-            child: DecoratedBox(
-              key: Key(
-                presentation.isRed ? 'progress-red-card' : 'progress-blue-card',
-              ),
-              decoration: BoxDecoration(
-                color: presentation.isRed ? AppColors.alert : AppColors.primary,
-                borderRadius: BorderRadius.circular(ScreenAdapter.width(12)),
-              ),
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      ScreenAdapter.width(24),
-                      ScreenAdapter.height(44),
-                      ScreenAdapter.width(24),
-                      0,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _ValueRow(
-                          label: item.amountLabel.isEmpty
-                              ? presentation.amountLabel
-                              : item.amountLabel,
-                          value: item.amount,
-                        ),
-                        SizedBox(height: ScreenAdapter.height(8)),
-                        _ValueRow(
-                          label: item.dateLabel.isEmpty
-                              ? presentation.dateLabel
-                              : item.dateLabel,
-                          value: item.date,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (hasActions)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: _ActionRow(
-                        presentation: presentation,
-                        actions: item.actions,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: DecoratedBox(
+                key: Key(
+                  presentation.isRed
+                      ? 'progress-red-card'
+                      : 'progress-blue-card',
+                ),
+                decoration: BoxDecoration(
+                  color: presentation.isRed
+                      ? AppColors.alert
+                      : AppColors.primary,
+                  borderRadius: BorderRadius.circular(ScreenAdapter.width(12)),
+                ),
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        ScreenAdapter.width(24),
+                        ScreenAdapter.height(44),
+                        ScreenAdapter.width(24),
+                        0,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _ValueRow(
+                            label: item.amountLabel.isEmpty
+                                ? presentation.amountLabel
+                                : item.amountLabel,
+                            value: item.amount,
+                          ),
+                          SizedBox(height: ScreenAdapter.height(8)),
+                          _ValueRow(
+                            label: item.dateLabel.isEmpty
+                                ? presentation.dateLabel
+                                : item.dateLabel,
+                            value: item.date,
+                          ),
+                        ],
                       ),
                     ),
-                ],
+                    if (hasActions)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _ActionRow(
+                          presentation: presentation,
+                          actions: item.actions,
+                          onActionTap: onActionTap,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -260,60 +289,64 @@ class _ProgressCard extends StatelessWidget {
             right: ScreenAdapter.width(-12),
             top: 0,
             height: ScreenAdapter.height(40),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(ScreenAdapter.width(10)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: ScreenAdapter.width(12),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(ScreenAdapter.width(10)),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: ScreenAdapter.width(18),
-                      height: ScreenAdapter.height(18),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(
-                          ScreenAdapter.width(3),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ScreenAdapter.width(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: ScreenAdapter.width(18),
+                        height: ScreenAdapter.height(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(
+                            ScreenAdapter.width(3),
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'C',
+                          style: TextStyle(
+                            color: AppColors.surface,
+                            fontSize: ScreenAdapter.font(11),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'C',
+                      SizedBox(width: ScreenAdapter.width(4)),
+                      Expanded(
+                        child: Text(
+                          item.productName,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: ScreenAdapter.font(16),
+                            fontWeight: FontWeight.w600,
+                            height: 16 / 16,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        presentation.label,
                         style: TextStyle(
-                          color: AppColors.surface,
-                          fontSize: ScreenAdapter.font(11),
-                          fontWeight: FontWeight.w700,
+                          color: presentation.isRed || presentation.isFailed
+                              ? AppColors.alert
+                              : AppColors.primary,
+                          fontSize: ScreenAdapter.font(12),
+                          fontWeight: FontWeight.w400,
+                          height: 17 / 12,
                         ),
                       ),
-                    ),
-                    SizedBox(width: ScreenAdapter.width(4)),
-                    Expanded(
-                      child: Text(
-                        item.productName,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: ScreenAdapter.font(16),
-                          fontWeight: FontWeight.w600,
-                          height: 16 / 16,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      presentation.label,
-                      style: TextStyle(
-                        color: presentation.isRed || presentation.isFailed
-                            ? AppColors.alert
-                            : AppColors.primary,
-                        fontSize: ScreenAdapter.font(12),
-                        fontWeight: FontWeight.w400,
-                        height: 17 / 12,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -364,10 +397,15 @@ class _ValueRow extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.presentation, required this.actions});
+  const _ActionRow({
+    required this.presentation,
+    required this.actions,
+    this.onActionTap,
+  });
 
   final _ProgressPresentation presentation;
   final List<ProgressAction> actions;
+  final ValueChanged<ProgressAction>? onActionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -378,22 +416,28 @@ class _ActionRow extends StatelessWidget {
           children: actions
               .map(
                 (action) => Expanded(
-                  child: DecoratedBox(
-                    key: Key('progress-action-${action.type}'),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(ScreenAdapter.width(8)),
-                        right: Radius.circular(ScreenAdapter.width(8)),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onActionTap == null
+                        ? null
+                        : () => onActionTap!(action),
+                    child: DecoratedBox(
+                      key: Key('progress-action-${action.type}'),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(ScreenAdapter.width(8)),
+                          right: Radius.circular(ScreenAdapter.width(8)),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        action.label,
-                        style: _actionTextStyle(
-                          presentation.isRed
-                              ? AppColors.alert
-                              : AppColors.primary,
+                      child: Center(
+                        child: Text(
+                          action.label,
+                          style: _actionTextStyle(
+                            presentation.isRed
+                                ? AppColors.alert
+                                : AppColors.primary,
+                          ),
                         ),
                       ),
                     ),
@@ -419,10 +463,24 @@ class _ActionRow extends StatelessWidget {
                     bottomLeft: Radius.circular(ScreenAdapter.width(8)),
                   ),
                 ),
-                child: Center(
-                  child: Text(
-                    'Try again',
-                    style: _actionTextStyle(AppColors.surface),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onActionTap == null
+                      ? null
+                      : () => onActionTap!(
+                          const ProgressAction(
+                            type: 'retry',
+                            visible: true,
+                            label: 'Try again',
+                            badge: '',
+                            route: '',
+                          ),
+                        ),
+                  child: Center(
+                    child: Text(
+                      'Try again',
+                      style: _actionTextStyle(AppColors.surface),
+                    ),
                   ),
                 ),
               ),
@@ -439,11 +497,25 @@ class _ActionRow extends StatelessWidget {
                   right: Radius.circular(ScreenAdapter.width(8)),
                 ),
               ),
-              child: Center(
-                child: Text(
-                  'Change',
-                  style: _actionTextStyle(
-                    presentation.isRed ? AppColors.alert : AppColors.primary,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onActionTap == null
+                    ? null
+                    : () => onActionTap!(
+                        const ProgressAction(
+                          type: 'change',
+                          visible: true,
+                          label: 'Change',
+                          badge: '',
+                          route: '',
+                        ),
+                      ),
+                child: Center(
+                  child: Text(
+                    'Change',
+                    style: _actionTextStyle(
+                      presentation.isRed ? AppColors.alert : AppColors.primary,
+                    ),
                   ),
                 ),
               ),
