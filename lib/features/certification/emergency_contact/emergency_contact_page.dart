@@ -88,6 +88,7 @@ class _EmergencyContactPageState extends State<EmergencyContactPage> {
   @override
   Widget build(BuildContext context) {
     ScreenAdapter.init(context);
+    final busy = _loadState == _LoadState.loading || _isSubmitting;
     final onBack = CertificationRetentionGuard.backHandler(
       type: '4',
       productId: _productId(),
@@ -98,36 +99,53 @@ class _EmergencyContactPageState extends State<EmergencyContactPage> {
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) onBack();
+          if (!didPop && !busy) onBack();
         },
-        child: Scaffold(
-          backgroundColor: AppColors.pageBackground,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _Header(onBack: onBack),
-                SizedBox(height: ScreenAdapter.height(10)),
-                IdentityPromptBanner(message: _prompt),
-                SizedBox(height: ScreenAdapter.height(12)),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: ScreenAdapter.width(24)),
-                    child: Image.asset(
-                      AppAssets.emergencyContactProgress,
-                      key: const Key('emergencyContactProgress'),
-                      width: ScreenAdapter.width(108),
-                      height: ScreenAdapter.height(48),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                    ),
+        child: Stack(
+          children: [
+            AbsorbPointer(
+              absorbing: busy,
+              child: Scaffold(
+                backgroundColor: AppColors.pageBackground,
+                body: SafeArea(
+                  child: Column(
+                    children: [
+                      _Header(onBack: onBack),
+                      SizedBox(height: ScreenAdapter.height(10)),
+                      IdentityPromptBanner(message: _prompt),
+                      SizedBox(height: ScreenAdapter.height(12)),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: ScreenAdapter.width(24),
+                          ),
+                          child: Image.asset(
+                            AppAssets.emergencyContactProgress,
+                            key: const Key('emergencyContactProgress'),
+                            width: ScreenAdapter.width(108),
+                            height: ScreenAdapter.height(48),
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: _buildContent()),
+                    ],
                   ),
                 ),
-                Expanded(child: _buildContent()),
-              ],
+                bottomNavigationBar: _buildFooter(),
+              ),
             ),
-          ),
-          bottomNavigationBar: _buildFooter(),
+            if (busy)
+              const Positioned.fill(
+                child: ModalBarrier(
+                  dismissible: false,
+                  color: Colors.transparent,
+                ),
+              ),
+            if (_isSubmitting) const Center(child: CircularProgressIndicator()),
+          ],
         ),
       ),
     );

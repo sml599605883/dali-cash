@@ -223,8 +223,14 @@ void main() {
 
       expect(await bridge.getPushToken(), 'push-token');
       expect(await bridge.getTrackingStatus(), 'authorized');
+      await bridge.registerForRemoteNotifications();
       await bridge.initializeAdjust('adjust-token');
-      expect(calls, ['getPushToken', 'getTrackingStatus', 'initializeAdjust']);
+      expect(calls, [
+        'getPushToken',
+        'getTrackingStatus',
+        'registerForRemoteNotifications',
+        'initializeAdjust',
+      ]);
     },
   );
 

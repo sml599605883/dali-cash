@@ -286,8 +286,6 @@ class _AboutUsSection extends StatelessWidget {
     required this.accountSessionCoordinator,
   });
 
-  static const _privacyAgreementPath = '/#/Turbocharger';
-
   final Future<String> versionFuture;
   final AccountSessionCoordinator? accountSessionCoordinator;
 
@@ -323,8 +321,9 @@ class _AboutUsSection extends StatelessWidget {
               key: const Key('mine-privacy-agreement'),
               iconAsset: AppAssets.minePrivacyAgreement,
               label: 'Privacy Agreement',
-              onTap: () =>
-                  NavigationHelper.toWebPath<void>(path: _privacyAgreementPath),
+              onTap: () => NavigationHelper.toWebPath<void>(
+                path: NavigationHelper.privacyAgreementPath,
+              ),
               showChevron: true,
             ),
             _MineRow(

@@ -18,6 +18,7 @@ class LoginController extends GetxController {
     required this.dismissLoading,
     required this.showMessage,
     required this.onLoginSuccess,
+    this.dismissKeyboard = _dismissKeyboard,
     this.countdownInterval = const Duration(seconds: 1),
   });
 
@@ -27,6 +28,7 @@ class LoginController extends GetxController {
   final LoginAsyncAction dismissLoading;
   final LoginMessagePresenter showMessage;
   final LoginAsyncAction onLoginSuccess;
+  final VoidCallback dismissKeyboard;
   final Duration countdownInterval;
 
   final phoneController = TextEditingController();
@@ -108,8 +110,12 @@ class LoginController extends GetxController {
   Future<void> submitSmsCode() async {
     if (loggingIn ||
         phoneController.text.trim().isEmpty ||
-        codeController.text.trim().length != 6 ||
-        !agreementAccepted) {
+        codeController.text.trim().length != 6) {
+      return;
+    }
+    dismissKeyboard();
+    if (!agreementAccepted) {
+      await showMessage('Please agree to the Privacy Policy');
       return;
     }
     loggingIn = true;
@@ -186,4 +192,8 @@ class LoginController extends GetxController {
     codeFocusNode.dispose();
     super.onClose();
   }
+}
+
+void _dismissKeyboard() {
+  FocusManager.instance.primaryFocus?.unfocus();
 }

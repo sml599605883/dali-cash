@@ -220,6 +220,17 @@ class ClientBridge {
 
   Future<String> getPushToken() => _safeInvokeString('getPushToken');
 
+  Future<void> registerForRemoteNotifications() async {
+    if (!supportsNativeBridge) return;
+    try {
+      await _channel.invokeMethod<void>('registerForRemoteNotifications');
+    } on PlatformException {
+      return;
+    } on MissingPluginException {
+      return;
+    }
+  }
+
   Future<String> getTrackingStatus() => _safeInvokeString('getTrackingStatus');
 
   Future<void> initializeAdjust(String token) async {

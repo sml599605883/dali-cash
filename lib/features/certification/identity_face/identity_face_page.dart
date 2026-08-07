@@ -326,9 +326,9 @@ class _IdentityFacePageState extends State<IdentityFacePage> {
       context: context,
       builder: (dialogContext) {
         return CupertinoAlertDialog(
-          title: const Text('Camera permission required'),
+          title: const Text('Allow Camera Access'),
           content: const Text(
-            'Please enable camera access in Settings to continue.',
+            "We can't complete identity verification without camera access. Enable the permission to continue your application securely.",
           ),
           actions: [
             CupertinoDialogAction(

@@ -13,6 +13,7 @@ import '../../core/permissions/permission_coordinator.dart';
 import '../../core/report/dali_report_service.dart';
 import '../../features/orders/order_list_item.dart';
 import '../../features/product_detail/product_detail_data.dart';
+import '../../features/main_shell/main_controller.dart';
 import '../routes/app_routes.dart';
 import 'dali_deep_link.dart';
 import 'dali_product_navigation_flow.dart';
@@ -37,6 +38,7 @@ typedef ExternalUriLauncher = Future<bool> Function(Uri uri);
 
 abstract final class NavigationHelper {
   static const _deepLinkParser = DaliDeepLinkParser();
+  static const privacyAgreementPath = '/#/Turbocharger';
   static const Map<String, String> _productDetailSteps = <String, String>{
     'public': 'identity',
     'LancerPredacities': 'identity',
@@ -71,6 +73,7 @@ abstract final class NavigationHelper {
   static MainTabNavigator mainTabNavigator = defaultMainTabNavigator;
   static CertificationLocationRequester certificationLocationRequester =
       defaultCertificationLocationRequester;
+  static NavigationAsyncPresenter locationReporter = defaultLocationReporter;
   static PermissionPromptPresenter permissionPromptPresenter =
       defaultPermissionPromptPresenter;
   static AppSettingsOpener appSettingsOpener = defaultAppSettingsOpener;
@@ -105,6 +108,11 @@ abstract final class NavigationHelper {
   static Future<CertificationLocationDecision>
   defaultCertificationLocationRequester() {
     return PermissionCoordinator.instance.requestCertificationLocation();
+  }
+
+  static Future<void> defaultLocationReporter() {
+    return DaliReportService.current?.reportLocationAndDevice() ??
+        Future<void>.value();
   }
 
   static Future<bool> defaultPermissionPromptPresenter({
@@ -198,6 +206,23 @@ abstract final class NavigationHelper {
     return Get.toNamed<T>(
       AppRoutes.login,
       arguments: {'highlands': productId.trim()},
+    );
+  }
+
+  static Future<void> redirectToLoginAfterSessionExpiry({
+    ApiClient? apiClient,
+  }) async {
+    final client =
+        apiClient ??
+        (Get.isRegistered<ApiClient>() ? Get.find<ApiClient>() : null);
+    await client?.config.sessionStore.clearSession();
+    if (Get.isRegistered<MainController>()) {
+      Get.find<MainController>().returnToHomeTab();
+    }
+    if (Get.currentRoute == AppRoutes.login) return;
+    Get.offNamedUntil<void>(
+      AppRoutes.login,
+      (route) => route.settings.name == AppRoutes.home,
     );
   }
 
@@ -426,6 +451,15 @@ abstract final class NavigationHelper {
     );
   }
 
+  static Future<void> navigateWebViewRawTarget(String rawTarget) async {
+    final target = _deepLinkParser.parse(rawTarget.trim());
+    if (target.kind == DaliDeepLinkKind.login) {
+      await redirectToLoginAfterSessionExpiry();
+      return;
+    }
+    await _dispatchDeepLink(target);
+  }
+
   static Future<void> applyProduct(
     String productId, {
     String source = '0',
@@ -532,6 +566,7 @@ abstract final class NavigationHelper {
       showNotice: noticePresenter,
       resolveError: ApiErrorMessage.resolve,
       ensureLocationAccess: _ensureLocationAccess,
+      reportLocationAndDevice: locationReporter,
       navigateRawTarget: (target, arguments) {
         return navigateRawTarget(target, arguments: arguments);
       },
@@ -555,17 +590,20 @@ abstract final class NavigationHelper {
     final serviceDisabled =
         decision == CertificationLocationDecision.serviceDisabled;
     final openSettings = await permissionPromptPresenter(
-      title: serviceDisabled ? 'GPS is Off' : 'Location Required',
+      title: serviceDisabled
+          ? 'Turn On Location Services'
+          : 'Allow Location Access',
       content: serviceDisabled
-          ? 'It looks like your GPS is off. Please enable location services to complete the verification process.'
-          : 'Identity verification cannot be completed without your location. Please allow access in settings.',
+          ? 'To help us confirm your identity and safeguard your account against unauthorized access, please enable Location Services on your device to continue.'
+          : "We couldn't verify your location because permission is disabled. Please allow location access in your device settings to continue your application.",
       cancelText: 'Cancel',
-      confirmText: serviceDisabled ? 'Settings' : 'Enable',
+      confirmText: 'Settings',
     );
     if (openSettings) {
       await appSettingsOpener();
+      return false;
     }
-    return false;
+    return true;
   }
 
   static Future<bool> _handleProductDetail(ProductDetailData detail) async {

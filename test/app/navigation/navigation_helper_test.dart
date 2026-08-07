@@ -19,6 +19,7 @@ void main() {
   late List<String> navigationLogs;
   late List<int> navigatedTabs;
   late List<String> permissionPrompts;
+  late List<String> locationReports;
   late List<Map<String, String>> productRedirectReports;
   late List<Uri> externalUris;
   late int settingsOpenCount;
@@ -31,6 +32,7 @@ void main() {
     navigationLogs = <String>[];
     navigatedTabs = <int>[];
     permissionPrompts = <String>[];
+    locationReports = <String>[];
     productRedirectReports = <Map<String, String>>[];
     externalUris = <Uri>[];
     settingsOpenCount = 0;
@@ -53,6 +55,9 @@ void main() {
     };
     NavigationHelper.certificationLocationRequester = () async {
       return CertificationLocationDecision.granted;
+    };
+    NavigationHelper.locationReporter = () async {
+      locationReports.add('report');
     };
     NavigationHelper.permissionPromptPresenter =
         ({
@@ -90,6 +95,8 @@ void main() {
         NavigationHelper.defaultMainTabNavigator;
     NavigationHelper.certificationLocationRequester =
         NavigationHelper.defaultCertificationLocationRequester;
+    NavigationHelper.locationReporter =
+        NavigationHelper.defaultLocationReporter;
     NavigationHelper.permissionPromptPresenter =
         NavigationHelper.defaultPermissionPromptPresenter;
     NavigationHelper.appSettingsOpener =
@@ -144,6 +151,27 @@ void main() {
 
     expect(Get.currentRoute, AppRoutes.login);
     expect(navigationLogs, isEmpty);
+  });
+
+  testWidgets('WebView login target returns login to Home', (tester) async {
+    await _pumpRoutes(tester);
+
+    NavigationHelper.toWebView<void>(url: 'https://example.test/repayment');
+    await tester.pumpAndSettle();
+
+    await NavigationHelper.navigateWebViewRawTarget(
+      'ph://dali-cash/ios/TortoiseBerkelium',
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.login);
+    expect(find.byKey(const Key('webViewStub')), findsNothing);
+
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.home);
+    expect(find.byKey(const Key('homeStub')), findsOneWidget);
   });
 
   test('routes the documented setting scheme to the Mine tab', () async {
@@ -490,8 +518,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(apiClient.appliedProducts, isEmpty);
+    expect(locationReports, isEmpty);
     expect(feedbackEvents, isEmpty);
     expect(permissionPrompts, isEmpty);
+  });
+
+  test('granted location starts reporting without blocking apply', () async {
+    await apiClient.config.sessionStore.saveSessionId('session-id');
+    final reportCompleter = Completer<void>();
+    NavigationHelper.locationReporter = () {
+      locationReports.add('report');
+      return reportCompleter.future;
+    };
+
+    await NavigationHelper.applyProduct('product-42');
+
+    expect(locationReports, ['report']);
+    expect(apiClient.appliedProducts, ['product-42']);
+    reportCompleter.complete();
+  });
+
+  test('reporting failure does not stop product apply', () async {
+    await apiClient.config.sessionStore.saveSessionId('session-id');
+    NavigationHelper.locationReporter = () async {
+      locationReports.add('report');
+      throw StateError('report failed');
+    };
+
+    await NavigationHelper.applyProduct('product-42');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(locationReports, ['report']);
+    expect(apiClient.appliedProducts, ['product-42']);
+    expect(
+      navigationLogs,
+      contains(contains('location and device report before apply failed')),
+    );
   });
 
   testWidgets('permanent location denial offers app settings before apply', (
@@ -518,12 +580,38 @@ void main() {
 
     expect(Get.currentRoute, '/');
     expect(apiClient.appliedProducts, isEmpty);
-    expect(permissionPrompts.single, contains('Location Required'));
+    expect(permissionPrompts.single, contains('Allow Location Access'));
     expect(settingsOpenCount, 1);
     expect(feedbackEvents, isEmpty);
   });
 
-  testWidgets('disabled location service stops apply and offers settings', (
+  test(
+    'permanent location denial can continue when settings prompt is canceled',
+    () async {
+      await apiClient.config.sessionStore.saveSessionId('session-id');
+      NavigationHelper.certificationLocationRequester = () async {
+        return CertificationLocationDecision.settingsRequired;
+      };
+      NavigationHelper.permissionPromptPresenter =
+          ({
+            required title,
+            required content,
+            required cancelText,
+            required confirmText,
+          }) async {
+            expect(title, 'Allow Location Access');
+            expect(cancelText, 'Cancel');
+            expect(confirmText, 'Settings');
+            return false;
+          };
+
+      await NavigationHelper.applyProduct('product-42');
+
+      expect(apiClient.appliedProducts, ['product-42']);
+    },
+  );
+
+  testWidgets('disabled location service opens settings and stops apply', (
     tester,
   ) async {
     await _pumpRoutes(tester);
@@ -531,15 +619,51 @@ void main() {
     NavigationHelper.certificationLocationRequester = () async {
       return CertificationLocationDecision.serviceDisabled;
     };
+    NavigationHelper.permissionPromptPresenter =
+        ({
+          required title,
+          required content,
+          required cancelText,
+          required confirmText,
+        }) async {
+          permissionPrompts.add('$title|$content|$cancelText|$confirmText');
+          return true;
+        };
 
     await NavigationHelper.applyProduct('product-42');
     await tester.pumpAndSettle();
 
     expect(Get.currentRoute, '/');
     expect(apiClient.appliedProducts, isEmpty);
-    expect(permissionPrompts.single, contains('GPS is Off'));
-    expect(settingsOpenCount, 0);
+    expect(permissionPrompts.single, contains('Turn On Location Services'));
+    expect(settingsOpenCount, 1);
   });
+
+  test(
+    'disabled location service can continue when settings prompt is canceled',
+    () async {
+      await apiClient.config.sessionStore.saveSessionId('session-id');
+      NavigationHelper.certificationLocationRequester = () async {
+        return CertificationLocationDecision.serviceDisabled;
+      };
+      NavigationHelper.permissionPromptPresenter =
+          ({
+            required title,
+            required content,
+            required cancelText,
+            required confirmText,
+          }) async {
+            expect(title, 'Turn On Location Services');
+            expect(cancelText, 'Cancel');
+            expect(confirmText, 'Settings');
+            return false;
+          };
+
+      await NavigationHelper.applyProduct('product-42');
+
+      expect(apiClient.appliedProducts, ['product-42']);
+    },
+  );
 
   testWidgets('pops nested routes until the Home root remains', (tester) async {
     await _pumpRoutes(tester);

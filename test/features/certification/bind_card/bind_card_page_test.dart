@@ -627,7 +627,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Camera permission required'), findsOneWidget);
+    expect(find.text('Allow Camera Access'), findsOneWidget);
     expect(livenessCalls, 0);
   });
 

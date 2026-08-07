@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -7,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../app/layout/screen_adapter.dart';
+import '../../app/navigation/navigation_helper.dart';
 import '../../app/resources/app_assets.dart';
 import '../../app/theme/app_colors.dart';
 import 'login_controller.dart';
@@ -50,12 +50,6 @@ class LoginPage extends GetView<LoginController> {
                             const _Title(),
                             const _LoginBanner(),
                             _LoginPanel(controller: controller),
-                            _AgreementRow(
-                              accepted: controller.agreementAccepted,
-                              onToggle: controller.toggleAgreement,
-                              onPolicyTap:
-                                  onPrivacyPolicyTap ?? _logPrivacyPolicyTap,
-                            ),
                           ],
                         ),
                       ),
@@ -66,13 +60,20 @@ class LoginPage extends GetView<LoginController> {
             ),
           ),
         ),
+        bottomNavigationBar: GetBuilder<LoginController>(
+          builder: (controller) => _LoginAgreementNavigation(
+            accepted: controller.agreementAccepted,
+            onToggle: controller.toggleAgreement,
+            onPolicyTap: onPrivacyPolicyTap ?? _openPrivacyPolicy,
+          ),
+        ),
       ),
     );
   }
 }
 
-void _logPrivacyPolicyTap() {
-  log('Privacy Policy tapped');
+void _openPrivacyPolicy() {
+  NavigationHelper.toWebPath<void>(path: NavigationHelper.privacyAgreementPath);
 }
 
 class _Title extends StatelessWidget {
@@ -332,14 +333,17 @@ class _ApplyButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: controller.canSubmit ? controller.submitSmsCode : null,
       child: Container(
+        key: const Key('login-submit-decoration'),
         height: ScreenAdapter.height(46),
         decoration: BoxDecoration(
-          color: AppColors.primary,
+          color: controller.canSubmit
+              ? AppColors.primary
+              : AppColors.loginCountdownText,
           borderRadius: BorderRadius.circular(ScreenAdapter.width(8)),
         ),
         alignment: Alignment.center,
         child: Text(
-          'Apply Now',
+          'Login',
           style: TextStyle(
             color: AppColors.surface,
             fontSize: ScreenAdapter.font(16),
@@ -352,8 +356,8 @@ class _ApplyButton extends StatelessWidget {
   }
 }
 
-class _AgreementRow extends StatelessWidget {
-  const _AgreementRow({
+class _LoginAgreementNavigation extends StatelessWidget {
+  const _LoginAgreementNavigation({
     required this.accepted,
     required this.onToggle,
     required this.onPolicyTap,
@@ -365,36 +369,50 @@ class _AgreementRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: ScreenAdapter.width(16),
-      right: ScreenAdapter.width(16),
-      bottom: ScreenAdapter.height(39),
-      height: ScreenAdapter.height(34),
-      child: Row(
-        children: [
-          GestureDetector(
-            key: const Key('login-agreement-toggle'),
-            behavior: HitTestBehavior.opaque,
-            onTap: onToggle,
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: ScreenAdapter.height(9)),
-              child: Image.asset(
-                accepted
-                    ? AppAssets.loginAgreementChecked
-                    : AppAssets.loginAgreementUnchecked,
-                key: Key(
-                  accepted
-                      ? 'login-agreement-checked'
-                      : 'login-agreement-unchecked',
+    return ColoredBox(
+      color: AppColors.pageBackground,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            ScreenAdapter.width(16),
+            0,
+            ScreenAdapter.width(16),
+            ScreenAdapter.height(39),
+          ),
+          child: SizedBox(
+            key: const Key('login-agreement-navigation'),
+            height: ScreenAdapter.height(34),
+            child: Row(
+              children: [
+                GestureDetector(
+                  key: const Key('login-agreement-toggle'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onToggle,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: ScreenAdapter.height(9),
+                    ),
+                    child: Image.asset(
+                      accepted
+                          ? AppAssets.loginAgreementChecked
+                          : AppAssets.loginAgreementUnchecked,
+                      key: Key(
+                        accepted
+                            ? 'login-agreement-checked'
+                            : 'login-agreement-unchecked',
+                      ),
+                      width: ScreenAdapter.width(16),
+                      height: ScreenAdapter.height(16),
+                    ),
+                  ),
                 ),
-                width: ScreenAdapter.width(16),
-                height: ScreenAdapter.height(16),
-              ),
+                SizedBox(width: ScreenAdapter.width(12)),
+                Expanded(child: _AgreementText(onPolicyTap: onPolicyTap)),
+              ],
             ),
           ),
-          SizedBox(width: ScreenAdapter.width(12)),
-          Expanded(child: _AgreementText(onPolicyTap: onPolicyTap)),
-        ],
+        ),
       ),
     );
   }

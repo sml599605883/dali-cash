@@ -1,6 +1,7 @@
 import 'package:dali_cash/app/layout/screen_adapter.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/routes/app_routes.dart';
+import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
@@ -70,10 +71,11 @@ void main() {
     expect(find.text('Dali Cash'), findsOneWidget);
     expect(find.text('Please enter mobile number'), findsOneWidget);
     expect(find.text('Verify with SMS Code'), findsOneWidget);
-    expect(find.text('Apply Now'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
     expect(find.byKey(const Key('login-phone-field')), findsOneWidget);
     expect(find.byKey(const Key('login-code-field')), findsOneWidget);
     expect(find.byKey(const Key('login-agreement-checked')), findsOneWidget);
+    expect(find.byKey(const Key('login-agreement-navigation')), findsOneWidget);
     expect(
       find.text('I have read and agree to the Privacy Policy'),
       findsOneWidget,
@@ -122,6 +124,34 @@ void main() {
     final policySpan = rootSpan.children!.last as TextSpan;
     (policySpan.recognizer! as TapGestureRecognizer).onTap!();
     expect(policyTaps, 1);
+  });
+
+  testWidgets('login button stays gray until six code digits are entered', (
+    tester,
+  ) async {
+    await pumpLogin(tester);
+    await tester.enterText(
+      find.byKey(const Key('login-phone-field')),
+      '9123456789',
+    );
+    await tester.enterText(find.byKey(const Key('login-code-field')), '12345');
+    await tester.pump();
+
+    var decoration = tester.widget<Container>(
+      find.byKey(const Key('login-submit-decoration')),
+    );
+    expect(
+      (decoration.decoration! as BoxDecoration).color,
+      AppColors.loginCountdownText,
+    );
+
+    await tester.enterText(find.byKey(const Key('login-code-field')), '123456');
+    await tester.pumpAndSettle();
+
+    decoration = tester.widget<Container>(
+      find.byKey(const Key('login-submit-decoration')),
+    );
+    expect((decoration.decoration! as BoxDecoration).color, AppColors.primary);
   });
 
   testWidgets('does not overflow on a compact screen', (tester) async {

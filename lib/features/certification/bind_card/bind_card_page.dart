@@ -157,43 +157,71 @@ class _BindCardPageState extends State<BindCardPage> {
   @override
   Widget build(BuildContext context) {
     ScreenAdapter.init(context);
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: GestureDetector(
-        key: const Key('bindCardDismissKeyboard'),
-        behavior: HitTestBehavior.translucent,
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              _BindCardHeader(onBack: () => Navigator.of(context).maybePop()),
-              SizedBox(height: ScreenAdapter.height(11)),
-              IdentityPromptBanner(message: _data?.topPrompt ?? ''),
-              SizedBox(height: ScreenAdapter.height(8)),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: EdgeInsets.only(left: ScreenAdapter.width(16)),
-                  child: Image.asset(
-                    AppAssets.bindCardProgress,
-                    key: const Key('bindCardProgress'),
-                    width: ScreenAdapter.width(108),
-                    height: ScreenAdapter.height(48),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
+    final busy = _loading || _submitting;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !busy) Navigator.of(context).pop();
+      },
+      child: Stack(
+        children: [
+          AbsorbPointer(
+            absorbing: busy,
+            child: Scaffold(
+              backgroundColor: AppColors.pageBackground,
+              body: GestureDetector(
+                key: const Key('bindCardDismissKeyboard'),
+                behavior: HitTestBehavior.translucent,
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                child: SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      _BindCardHeader(
+                        onBack: () => Navigator.of(context).maybePop(),
+                      ),
+                      SizedBox(height: ScreenAdapter.height(11)),
+                      IdentityPromptBanner(message: _data?.topPrompt ?? ''),
+                      SizedBox(height: ScreenAdapter.height(8)),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: ScreenAdapter.width(16),
+                          ),
+                          child: Image.asset(
+                            AppAssets.bindCardProgress,
+                            key: const Key('bindCardProgress'),
+                            width: ScreenAdapter.width(108),
+                            height: ScreenAdapter.height(48),
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: _buildContent()),
+                    ],
                   ),
                 ),
               ),
-              Expanded(child: _buildContent()),
-            ],
+              bottomNavigationBar: _BindCardFooter(
+                hint: _data?.bottomPrompt ?? '',
+                submitting: _submitting,
+                onUpload: _loading || _data?.groups.isEmpty != false
+                    ? null
+                    : _submit,
+              ),
+            ),
           ),
-        ),
-      ),
-      bottomNavigationBar: _BindCardFooter(
-        hint: _data?.bottomPrompt ?? '',
-        submitting: _submitting,
-        onUpload: _loading || _data?.groups.isEmpty != false ? null : _submit,
+          if (busy)
+            const Positioned.fill(
+              child: ModalBarrier(
+                dismissible: false,
+                color: Colors.transparent,
+              ),
+            ),
+          if (_submitting) const Center(child: CircularProgressIndicator()),
+        ],
       ),
     );
   }
@@ -641,9 +669,9 @@ class _BindCardPageState extends State<BindCardPage> {
     return showCupertinoDialog<void>(
       context: context,
       builder: (dialogContext) => CupertinoAlertDialog(
-        title: const Text('Camera permission required'),
+        title: const Text('Allow Camera Access'),
         content: const Text(
-          'Please enable camera access in Settings to continue.',
+          "We can't complete identity verification without camera access. Enable the permission to continue your application securely.",
         ),
         actions: [
           CupertinoDialogAction(

@@ -31,7 +31,7 @@ class AccountSessionCoordinator {
         AccountSessionAction.logout => apiClient.logout(),
         AccountSessionAction.deleteAccount => apiClient.userDelete(),
       };
-      await sessionStore.clearPersistent();
+      await sessionStore.clearSession();
       await returnHome();
       await dismissLoading();
       return true;

@@ -202,7 +202,7 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
       openWebView: (url) async {
         NavigationHelper.toWebView<void>(url: url);
       },
-      navigateInternal: NavigationHelper.navigateRawTarget,
+      navigateInternal: NavigationHelper.navigateWebViewRawTarget,
       openExternal: NavigationHelper.openExternalUri,
       closePage: () async => NavigationHelper.back<void>(),
       jumpHome: () {
@@ -358,7 +358,7 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
       return NavigationActionPolicy.ALLOW;
     }
     if (uri.scheme == 'ph') {
-      await NavigationHelper.navigateRawTarget(uri.toString());
+      await NavigationHelper.navigateWebViewRawTarget(uri.toString());
     } else {
       await NavigationHelper.openExternalUri(uri);
     }

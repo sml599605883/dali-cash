@@ -173,16 +173,10 @@ class DaliDeviceSnapshot {
       currentWifiName: daliReportText(map['currentWifiName']),
       currentWifiBssid: daliReportText(map['currentWifiBssid']),
       wifiCount: _integer(map['wifiCount']),
-      availableStorage: daliReportText(
-        map['availableStorage'],
-        fallback: '0',
-      ),
+      availableStorage: daliReportText(map['availableStorage'], fallback: '0'),
       totalStorage: daliReportText(map['totalStorage'], fallback: '0'),
       totalMemory: daliReportText(map['totalMemory'], fallback: '0'),
-      availableMemory: daliReportText(
-        map['availableMemory'],
-        fallback: '0',
-      ),
+      availableMemory: daliReportText(map['availableMemory'], fallback: '0'),
       pushToken: daliReportText(map['pushToken']),
     );
   }
@@ -190,6 +184,8 @@ class DaliDeviceSnapshot {
 
 String encryptDaliDeviceReport({
   required DaliDeviceSnapshot snapshot,
+  required String deviceModel,
+  required String physicalSize,
   required DaliLocationSnapshot? location,
   required int lastLoginAtMillis,
   required int nowMillis,
@@ -241,14 +237,14 @@ String encryptDaliDeviceReport({
       'rato': snapshot.elapsedMillis,
     },
     'hesitate': <String, dynamic>{
-      'droplet': daliReportText(snapshot.model),
+      'droplet': '',
       'bicycle': daliReportText(snapshot.brand),
       'anacondas': snapshot.cpuCoreCount,
       'uncounted': snapshot.screenHeight,
       'clerkly': daliReportText(snapshot.deviceName),
       'downward': snapshot.screenWidth,
-      'bellow': daliReportText(snapshot.modelName),
-      'beachwear': daliReportText(snapshot.screenSize),
+      'bellow': daliReportText(deviceModel),
+      'beachwear': daliReportText(physicalSize),
       'reuse': daliReportText(snapshot.systemVersion),
     },
     'terminates': <String, dynamic>{

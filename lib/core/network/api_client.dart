@@ -622,7 +622,7 @@ class ApiClient {
   }) async {
     final response = ApiResponse.fromRaw(Json(raw));
     if (response.isAuthExpired) {
-      await _handleAuthExpired();
+      await _handleAuthExpired(response.message);
     }
     if (acceptedCodes.contains(response.code)) {
       return response;
@@ -630,9 +630,12 @@ class ApiClient {
     return response.ensureSuccess();
   }
 
-  Future<void> _handleAuthExpired() async {
+  Future<void> _handleAuthExpired(String serverMessage) async {
+    final message = serverMessage.trim().isEmpty
+        ? 'Login expired'
+        : serverMessage;
     if (_handlingAuthExpired) {
-      throw ApiBusinessException('Login expired', code: -2);
+      throw ApiBusinessException(message, code: -2);
     }
     _handlingAuthExpired = true;
     try {
@@ -640,7 +643,7 @@ class ApiClient {
     } finally {
       _handlingAuthExpired = false;
     }
-    throw ApiBusinessException('Login expired', code: -2);
+    throw ApiBusinessException(message, code: -2);
   }
 
   String _randomDigits(int length) {

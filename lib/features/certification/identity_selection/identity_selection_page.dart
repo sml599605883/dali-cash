@@ -13,33 +13,50 @@ class IdentitySelectionPage extends GetView<IdentitySelectionController> {
 
   @override
   Widget build(BuildContext context) {
+    return GetBuilder<IdentitySelectionController>(
+      builder: (_) => _buildPage(context),
+    );
+  }
+
+  Widget _buildPage(BuildContext context) {
     ScreenAdapter.init(context);
     final onBack = CertificationRetentionGuard.backHandler(
       type: '0',
       productId: controller.productId,
       onDefaultBack: Get.back<void>,
     );
+    final busy = controller.state == IdentitySelectionState.loading;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) onBack();
+          if (!didPop && !busy) onBack();
         },
-        child: Scaffold(
-          backgroundColor: AppColors.pageBackground,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _IdentityHeader(onBack: onBack),
-                Expanded(
-                  child: GetBuilder<IdentitySelectionController>(
-                    builder: _buildContent,
+        child: Stack(
+          children: [
+            AbsorbPointer(
+              absorbing: busy,
+              child: Scaffold(
+                backgroundColor: AppColors.pageBackground,
+                body: SafeArea(
+                  child: Column(
+                    children: [
+                      _IdentityHeader(onBack: onBack),
+                      Expanded(child: _buildContent(controller)),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            if (busy)
+              const Positioned.fill(
+                child: ModalBarrier(
+                  dismissible: false,
+                  color: Colors.transparent,
+                ),
+              ),
+          ],
         ),
       ),
     );

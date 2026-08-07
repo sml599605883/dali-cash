@@ -41,7 +41,7 @@ final class DaliDeviceSnapshotCollector {
       UIDevice.current.isBatteryMonitoringEnabled = false
 
       let isCharging = batteryState == .charging || batteryState == .full
-      let bounds = UIScreen.main.nativeBounds
+      let bounds = UIScreen.main.bounds
       let fileAttributes = try? FileManager.default.attributesOfFileSystem(
         forPath: NSHomeDirectory()
       )
@@ -62,15 +62,15 @@ final class DaliDeviceSnapshotCollector {
         "elapsedMillis": uptime,
         "uptimeMillis": String(uptime),
         "isUsingProxy": isUsingProxy ? 1 : 0,
-        "isUsingVpn": hasActiveVpn(in: interfaces) ? 1 : 0,
+        "isUsingVpn": isUsingVpn() ? 1 : 0,
         "isJailbroken": isJailbroken() ? 1 : 0,
         "isEmulator": isSimulator() ? 1 : 0,
         "language": Locale.current.languageCode ?? "",
         "carrier": currentCarrierName(),
         "networkType": currentNetworkType(),
-        "timeZoneName": TimeZone.current.identifier,
+        "timeZoneName": gmtTimeZone(),
         "cpuCoreCount": ProcessInfo.processInfo.processorCount,
-        "brand": "Apple",
+        "brand": "iPhone",
         "deviceName": UIDevice.current.name,
         "model": modelIdentifier,
         "modelName": UIDevice.current.model,
@@ -243,12 +243,31 @@ final class DaliDeviceSnapshotCollector {
     return records
   }
 
-  private func hasActiveVpn(in interfaces: [DaliInterfaceRecord]) -> Bool {
-    let markers = ["utun", "tun", "tap", "ipsec", "ppp"]
-    return interfaces.contains { record in
-      let name = record.name.lowercased()
+  private func isUsingVpn() -> Bool {
+    guard
+      let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue()
+        as? [String: Any],
+      let scoped = settings["__SCOPED__"] as? [String: Any]
+    else {
+      return false
+    }
+    let markers = ["tap", "tun", "ppp", "ipsec", "utun"]
+    return scoped.keys.contains { key in
+      let name = key.lowercased()
       return markers.contains { name.contains($0) }
     }
+  }
+
+  private func gmtTimeZone() -> String {
+    let offset = TimeZone.current.secondsFromGMT()
+    guard offset != 0 else { return "GMT" }
+
+    let sign = offset >= 0 ? "+" : "-"
+    let totalMinutes = abs(offset) / 60
+    let hours = totalMinutes / 60
+    let minutes = totalMinutes % 60
+    guard minutes != 0 else { return "GMT\(sign)\(hours)" }
+    return String(format: "GMT%@%d:%02d", sign, hours, minutes)
   }
 
   private func preferredInnerIp(from interfaces: [DaliInterfaceRecord]) -> String {

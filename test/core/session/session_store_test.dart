@@ -25,6 +25,18 @@ void main() {
     expect(await store.physicalSize(), '');
   });
 
+  test('clearSession preserves device info for the next account', () async {
+    final store = SessionStore.memory();
+    await store.saveSessionId('session-id');
+    await store.saveDeviceInfo(deviceName: 'iPhone 17', physicalSize: '6.3');
+
+    await store.clearSession();
+
+    expect(await store.sessionId(), '');
+    expect(await store.deviceName(), 'iPhone 17');
+    expect(await store.physicalSize(), '6.3');
+  });
+
   test('stores phone and preserves it when clearing the session', () async {
     final store = SessionStore.memory();
     await store.saveSessionId('session-id');

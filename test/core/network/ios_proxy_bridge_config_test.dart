@@ -78,6 +78,16 @@ void main() {
     expect(collector, contains('NEHotspotNetwork.fetchCurrent'));
     expect(collector, contains('CNCopyCurrentNetworkInfo'));
     expect(collector, contains('getifaddrs'));
+    expect(collector, contains('CFNetworkCopySystemProxySettings'));
+    expect(collector, contains('settings["__SCOPED__"]'));
+    expect(collector, contains('private func isUsingVpn() -> Bool'));
+    expect(collector, contains('"timeZoneName": gmtTimeZone()'));
+    expect(collector, contains('TimeZone.current.secondsFromGMT()'));
+    expect(collector, contains('private func gmtTimeZone() -> String'));
+    expect(collector, isNot(contains('TimeZone.current.identifier')));
+    expect(collector, contains('let bounds = UIScreen.main.bounds'));
+    expect(collector, isNot(contains('UIScreen.main.nativeBounds')));
+    expect(collector, contains('"brand": "iPhone"'));
     expect(collector, contains('host_statistics64'));
     expect(collector, contains('DYLD_INSERT_LIBRARIES'));
     for (final label in ['WIFI', '2G', '3G', '4G', '5G', 'OTHER']) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../core/network/api_client.dart';
 import '../../features/product_detail/product_detail_data.dart';
 
@@ -22,6 +24,7 @@ class DaliProductNavigationFlow {
     required this.showNotice,
     required this.resolveError,
     required this.ensureLocationAccess,
+    required this.reportLocationAndDevice,
     required this.navigateRawTarget,
     required this.handleProductDetail,
     required this.logger,
@@ -36,6 +39,7 @@ class DaliProductNavigationFlow {
   final DaliMessageAction showNotice;
   final String Function(Object error) resolveError;
   final DaliAccessChecker ensureLocationAccess;
+  final DaliAsyncAction reportLocationAndDevice;
   final DaliRawTargetAction navigateRawTarget;
   final DaliProductDetailAction handleProductDetail;
   final DaliLogger logger;
@@ -64,6 +68,13 @@ class DaliProductNavigationFlow {
 
     await showLoading();
     try {
+      unawaited(() async {
+        try {
+          await reportLocationAndDevice();
+        } catch (error) {
+          logger('location and device report before apply failed: $error');
+        }
+      }());
       final response = await apiClient.productApply(
         productId: normalizedProductId,
         source: source,

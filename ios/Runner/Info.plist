@@ -32,13 +32,13 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>We need camera access to take a clear photo of your ID for identity verification.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We need photo library access so you can select an ID image for identity verification.</string>
+	<string>Allow camera access to upload your ID and complete identity verification for a fast and secure application process.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We use your location while you complete identity verification to support account security and application risk checks.</string>
+	<string>A location check during approval helps confirm who you are and protects your account from unauthorized access.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>A location check during approval helps confirm who you are and protects your account from unauthorized access.</string>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>We use your device advertising identifier to measure app install attribution and improve product recommendations.</string>
+	<string>Identifies your device, prevents fraud, and personalizes loan offers while keeping your information protected.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -17,6 +17,7 @@ void main() {
     store = SessionStore.memory();
     await store.saveSessionId('session-id');
     await store.savePhone('9123456789');
+    await store.saveDeviceInfo(deviceName: 'iPhone 17', physicalSize: '6.3');
     apiClient = _AccountApiClient(store);
     events = <String>[];
     coordinator = AccountSessionCoordinator(
@@ -37,6 +38,7 @@ void main() {
     expect(apiClient.deleteCalls, 0);
     expect(await store.sessionId(), isEmpty);
     expect(await store.phone(), '9123456789');
+    expect(await store.deviceName(), 'iPhone 17');
     expect(events, <String>['loading', 'home', 'dismiss']);
   });
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dali_cash/core/permissions/permission_coordinator.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
@@ -10,7 +11,10 @@ void main() {
     final coordinator = PermissionCoordinator(
       requestNotificationPermission: () async {
         events.add('notification');
-        return 'authorized';
+        return 'denied';
+      },
+      registerForRemoteNotifications: () async {
+        events.add('register');
       },
       requestTrackingPermission: () async {
         events.add('tracking');
@@ -26,7 +30,7 @@ void main() {
     await Future.wait([first, second]);
     await coordinator.requestStartupPermissions();
 
-    expect(events, ['delay', 'notification', 'delay', 'tracking']);
+    expect(events, ['delay', 'notification', 'register', 'delay', 'tracking']);
   });
 
   test('startup permission failures do not escape', () async {
@@ -92,17 +96,20 @@ void main() {
     expect(requests, 0);
   });
 
-  test('first location denial stops certification without settings', () async {
-    final coordinator = _locationCoordinator(
-      serviceStatus: ServiceStatus.enabled,
-      permissionStatus: PermissionStatus.denied,
-      requestedStatus: PermissionStatus.denied,
-    );
+  test(
+    'first location denial requires the secondary location prompt',
+    () async {
+      final coordinator = _locationCoordinator(
+        serviceStatus: ServiceStatus.enabled,
+        permissionStatus: PermissionStatus.denied,
+        requestedStatus: PermissionStatus.denied,
+      );
 
-    final decision = await coordinator.requestCertificationLocation();
+      final decision = await coordinator.requestCertificationLocation();
 
-    expect(decision, CertificationLocationDecision.denied);
-  });
+      expect(decision, CertificationLocationDecision.settingsRequired);
+    },
+  );
 
   test('permanently denied location requires app settings', () async {
     final coordinator = _locationCoordinator(
@@ -157,6 +164,43 @@ void main() {
     ]);
     expect(serviceChecks, 1);
     expect(statusChecks, 1);
+  });
+
+  testWidgets('paused location request releases the flow for a retry', (
+    tester,
+  ) async {
+    final firstRequestStarted = Completer<void>();
+    final firstNativeResult = Completer<PermissionStatus>();
+    var requests = 0;
+    final coordinator = PermissionCoordinator(
+      requestNotificationPermission: () async => 'authorized',
+      requestTrackingPermission: () async => 'authorized',
+      requestDelay: Duration.zero,
+      locationServiceStatusProvider: () async => ServiceStatus.enabled,
+      locationPermissionStatusProvider: () async => PermissionStatus.denied,
+      locationPermissionRequester: () {
+        requests++;
+        if (requests == 1) {
+          firstRequestStarted.complete();
+          return firstNativeResult.future;
+        }
+        return Future<PermissionStatus>.value(PermissionStatus.granted);
+      },
+    );
+
+    final first = coordinator.requestCertificationLocation();
+    await firstRequestStarted.future;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+
+    expect(await first, CertificationLocationDecision.denied);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    expect(
+      await coordinator.requestCertificationLocation(),
+      CertificationLocationDecision.granted,
+    );
+    expect(requests, 2);
+    firstNativeResult.complete(PermissionStatus.denied);
   });
 }
 

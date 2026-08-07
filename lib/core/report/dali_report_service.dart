@@ -39,7 +39,8 @@ class DaliReportService {
 
   bool _started = false;
   bool _starting = false;
-  bool _resuming = false;
+  bool _marketReporting = false;
+  bool _waitingForTrackingDecision = false;
   bool _adjustInitializing = false;
   Future<DaliLocationSnapshot?>? _pendingLocation;
   StreamSubscription<Json>? _eventSubscription;
@@ -49,8 +50,15 @@ class DaliReportService {
     _starting = true;
     try {
       _listenToNativeEvents();
+      _waitingForTrackingDecision = true;
+      final trackingStatus = await client.config.clientBridge
+          .getTrackingStatus();
+      if (_isResolvedTrackingStatus(trackingStatus) &&
+          _waitingForTrackingDecision) {
+        _waitingForTrackingDecision = false;
+        unawaited(_reportResolvedGoogleMarket());
+      }
       _started = true;
-      unawaited(reportGoogleMarket());
       unawaited(reportLocationAndDevice());
     } catch (error) {
       _log(error);
@@ -59,17 +67,7 @@ class DaliReportService {
     }
   }
 
-  Future<void> resumed() async {
-    if (_resuming) return;
-    _resuming = true;
-    try {
-      await reportGoogleMarket();
-    } catch (error) {
-      _log(error);
-    } finally {
-      _resuming = false;
-    }
-  }
+  Future<void> resumed() async {}
 
   Future<void> loginSucceeded() async {
     await store.saveLoginAt(_nowMillis());
@@ -100,7 +98,9 @@ class DaliReportService {
 
   Future<DaliLocationSnapshot?> _locationWithFallback() async {
     try {
-      final location = await currentLocation().timeout(const Duration(seconds: 3));
+      final location = await currentLocation().timeout(
+        const Duration(seconds: 3),
+      );
       if (location != null && location.isValid) return location;
     } catch (_) {}
     return store.cachedLocation();
@@ -114,15 +114,19 @@ class DaliReportService {
       if (!await _hasSession()) return;
       final location = await _locationWithFallback();
       if (location != null && location.isValid) {
-        await client.reportLocation(
-          province: location.province,
-          countryCode: location.countryCode,
-          country: location.country,
-          street: location.street,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          city: location.city,
-        );
+        try {
+          await client.reportLocation(
+            province: location.province,
+            countryCode: location.countryCode,
+            country: location.country,
+            street: location.street,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            city: location.city,
+          );
+        } catch (error) {
+          _log(error);
+        }
       }
       await reportDevice();
     } catch (error) {
@@ -131,8 +135,17 @@ class DaliReportService {
   }
 
   Future<void> reportGoogleMarket() async {
+    final trackingStatus = await client.config.clientBridge.getTrackingStatus();
+    if (!_isResolvedTrackingStatus(trackingStatus)) return;
+    await _reportResolvedGoogleMarket();
+  }
+
+  Future<void> _reportResolvedGoogleMarket() async {
+    if (_marketReporting) return;
+    _marketReporting = true;
     try {
-      final snapshot = await client.config.clientBridge.getReportDeviceSnapshot();
+      final snapshot = await client.config.clientBridge
+          .getReportDeviceSnapshot();
       if (daliReportText(snapshot.idfv).isEmpty) return;
       final response = await client.reportGoogleMarket(
         idfv: snapshot.idfv,
@@ -153,15 +166,20 @@ class DaliReportService {
       }
     } catch (error) {
       _log(error);
+    } finally {
+      _marketReporting = false;
     }
   }
 
   Future<void> reportDevice() async {
     try {
       if (!await _hasSession()) return;
-      final snapshot = await client.config.clientBridge.getReportDeviceSnapshot();
+      final snapshot = await client.config.clientBridge
+          .getReportDeviceSnapshot();
       final encrypted = encryptDaliDeviceReport(
         snapshot: snapshot,
+        deviceModel: await client.config.sessionStore.deviceName(),
+        physicalSize: await client.config.sessionStore.physicalSize(),
         location: await _locationWithFallback(),
         lastLoginAtMillis: await store.loginAt(),
         nowMillis: _nowMillis(),
@@ -177,7 +195,6 @@ class DaliReportService {
   Future<void> reportAppleToken() async {
     try {
       final token = (await client.config.clientBridge.getPushToken()).trim();
-      if (token.isEmpty) return;
       await client.reportApplePushToken(token: token);
     } catch (error) {
       _log(error);
@@ -191,7 +208,8 @@ class DaliReportService {
     required int startedAtSeconds,
   }) async {
     try {
-      final snapshot = await client.config.clientBridge.getReportDeviceSnapshot();
+      final snapshot = await client.config.clientBridge
+          .getReportDeviceSnapshot();
       final location = await _locationWithFallback();
       final resolvedOrderNo = orderNo.trim().isNotEmpty
           ? orderNo.trim()
@@ -238,8 +256,18 @@ class DaliReportService {
     _eventSubscription ??= events.listen((event) {
       final type = event['type'].stringValue;
       if (type == 'push_token') unawaited(reportAppleToken());
-      if (type == 'tracking_status_changed') unawaited(reportGoogleMarket());
+      if (type == 'tracking_status_changed' && _waitingForTrackingDecision) {
+        final status = event['status'].stringValue;
+        if (!_isResolvedTrackingStatus(status)) return;
+        _waitingForTrackingDecision = false;
+        unawaited(_reportResolvedGoogleMarket());
+      }
     }, onError: _log);
+  }
+
+  bool _isResolvedTrackingStatus(String status) {
+    final normalized = status.trim();
+    return normalized.isNotEmpty && normalized != 'not_determined';
   }
 
   Future<void> dispose() async {

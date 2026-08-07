@@ -16,6 +16,7 @@ void main() {
   late _FakeLoginApiClient apiClient;
   late List<String> messages;
   late int successCalls;
+  late int dismissKeyboardCalls;
   late LoginController controller;
 
   setUp(() {
@@ -24,6 +25,7 @@ void main() {
     apiClient = _FakeLoginApiClient();
     messages = <String>[];
     successCalls = 0;
+    dismissKeyboardCalls = 0;
   });
 
   tearDown(Get.reset);
@@ -36,6 +38,7 @@ void main() {
       dismissLoading: () async {},
       showMessage: (message) async => messages.add(message),
       onLoginSuccess: () async => successCalls++,
+      dismissKeyboard: () => dismissKeyboardCalls++,
       countdownInterval: const Duration(milliseconds: 10),
     );
     Get.put<LoginController>(controller);
@@ -88,6 +91,7 @@ void main() {
     expect(await sessionStore.sessionId(), 'session-token');
     expect(await sessionStore.phone(), '9123456789');
     expect(successCalls, 1);
+    expect(dismissKeyboardCalls, 1);
   });
 
   test('login failure clears code and reports stable message', () async {
@@ -109,6 +113,19 @@ void main() {
     expect(value.agreementAccepted, isTrue);
     value.toggleAgreement();
     expect(value.agreementAccepted, isFalse);
+  });
+
+  test('six code digits dismiss keyboard and prompt for agreement', () async {
+    final value = createController();
+    value.phoneController.text = '9123456789';
+    value.toggleAgreement();
+
+    value.codeController.text = '654321';
+    await Future<void>.delayed(Duration.zero);
+
+    expect(dismissKeyboardCalls, 1);
+    expect(messages, ['Please agree to the Privacy Policy']);
+    expect(apiClient.loginCalls, 0);
   });
 }
 

@@ -125,7 +125,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CupertinoAlertDialog), findsOneWidget);
-    expect(find.text('Camera permission required'), findsOneWidget);
+    expect(find.text('Allow Camera Access'), findsOneWidget);
     expect(selectedMethods, isEmpty);
 
     await tester.tap(find.text('Settings'));

@@ -101,6 +101,10 @@ class _CertificationInformationPageState
   @override
   Widget build(BuildContext context) {
     ScreenAdapter.init(context);
+    final busy =
+        _loadState == _CertificationInformationLoadState.loading ||
+        _isSubmitting ||
+        _addressLoadingKey != null;
     final onBack = CertificationRetentionGuard.backHandler(
       type: widget.riskScene == '6' ? '3' : '2',
       productId: _productId(),
@@ -111,66 +115,84 @@ class _CertificationInformationPageState
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) onBack();
+          if (!didPop && !busy) onBack();
         },
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: Scaffold(
-            backgroundColor: AppColors.pageBackground,
-            body: SafeArea(
-              child: Column(
-                children: [
-                  _CertificationInformationHeader(
-                    title: widget.title,
-                    keyPrefix: widget.keyPrefix,
-                    onBack: onBack,
-                  ),
-                  SizedBox(height: ScreenAdapter.height(10)),
-                  IdentityPromptBanner(message: _prompt),
-                  SizedBox(height: ScreenAdapter.height(12)),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: ScreenAdapter.width(24)),
-                      child: Image.asset(
-                        widget.progressAsset,
-                        key: Key('${widget.keyPrefix}Progress'),
-                        width: ScreenAdapter.width(108),
-                        height: ScreenAdapter.height(48),
-                        alignment: Alignment.topCenter,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        ScreenAdapter.width(16),
-                        0,
-                        ScreenAdapter.width(16),
-                        ScreenAdapter.height(8),
-                      ),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(
-                            ScreenAdapter.width(12),
+          child: Stack(
+            children: [
+              AbsorbPointer(
+                absorbing: busy,
+                child: Scaffold(
+                  backgroundColor: AppColors.pageBackground,
+                  body: SafeArea(
+                    child: Column(
+                      children: [
+                        _CertificationInformationHeader(
+                          title: widget.title,
+                          keyPrefix: widget.keyPrefix,
+                          onBack: onBack,
+                        ),
+                        SizedBox(height: ScreenAdapter.height(10)),
+                        IdentityPromptBanner(message: _prompt),
+                        SizedBox(height: ScreenAdapter.height(12)),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: ScreenAdapter.width(24),
+                            ),
+                            child: Image.asset(
+                              widget.progressAsset,
+                              key: Key('${widget.keyPrefix}Progress'),
+                              width: ScreenAdapter.width(108),
+                              height: ScreenAdapter.height(48),
+                              alignment: Alignment.topCenter,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            ScreenAdapter.width(12),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              ScreenAdapter.width(16),
+                              0,
+                              ScreenAdapter.width(16),
+                              ScreenAdapter.height(8),
+                            ),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(
+                                  ScreenAdapter.width(12),
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  ScreenAdapter.width(12),
+                                ),
+                                child: _buildContent(),
+                              ),
+                            ),
                           ),
-                          child: _buildContent(),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                  bottomNavigationBar: _buildFooter(),
+                ),
               ),
-            ),
-            bottomNavigationBar: _buildFooter(),
+              if (busy)
+                const Positioned.fill(
+                  child: ModalBarrier(
+                    dismissible: false,
+                    color: Colors.transparent,
+                  ),
+                ),
+              if (_isSubmitting || _addressLoadingKey != null)
+                const Center(child: CircularProgressIndicator()),
+            ],
           ),
         ),
       ),

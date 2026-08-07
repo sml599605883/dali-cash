@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dali_cash/core/permissions/permission_lifecycle_observer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +39,27 @@ void main() {
     expect(resumeRequests, 1);
     expect(reportStarts, 1);
     expect(reportResumes, 1);
+    WidgetsBinding.instance.removeObserver(observer);
+  });
+
+  test('reports push only after startup permissions resolve', () async {
+    final permissionCompleter = Completer<void>();
+    var pushReports = 0;
+    final observer = PermissionLifecycleObserver(
+      requestStartupPermissions: () => permissionCompleter.future,
+      requestResumeTrackingPermission: () async {},
+      reportPushToken: () async {
+        pushReports++;
+      },
+    );
+
+    observer.start();
+    await Future<void>.delayed(Duration.zero);
+    expect(pushReports, 0);
+
+    permissionCompleter.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(pushReports, 1);
     WidgetsBinding.instance.removeObserver(observer);
   });
 }

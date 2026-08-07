@@ -42,6 +42,7 @@ void main() {
     final first = await ApiSignature(
       config,
     ).buildSignedQuery(path: '/lutes/unsphered');
+    await store.clearSession();
     await store.saveSessionId('session-2');
     final second = await ApiSignature(
       config,
@@ -55,6 +56,7 @@ void main() {
     expect(first['crestfallen'], 'session-1');
     expect(first['sempervivums'], 'stable-idfv');
     expect(second['crestfallen'], 'session-2');
+    expect(second['extravagates'], 'iPhone 17');
   });
 
   test('builds Dali signed query with fixed vector', () async {

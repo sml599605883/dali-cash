@@ -1,6 +1,7 @@
 import AdSupport
 import AppTrackingTransparency
 import CFNetwork
+import Contacts
 import CoreLocation
 import Darwin
 import Flutter
@@ -75,6 +76,11 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
         )
       case "getPushToken":
         result(self.pushToken)
+      case "registerForRemoteNotifications":
+        DispatchQueue.main.async {
+          UIApplication.shared.registerForRemoteNotifications()
+          result(nil)
+        }
       case "getTrackingStatus":
         result(self.currentTrackingStatus())
       case "initializeAdjust":
@@ -215,6 +221,11 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     }
     let manager = CLLocationManager()
     manager.delegate = self
+    if let previousResult = locationPermissionResult {
+      locationPermissionResult = nil
+      locationPermissionManager = nil
+      previousResult("interrupted")
+    }
     locationPermissionManager = manager
     locationPermissionResult = result
     let status = manager.authorizationStatus
@@ -281,25 +292,48 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     placemark: CLPlacemark?,
     status: String
   ) -> [String: Any] {
-    let address = [
-      placemark?.subThoroughfare,
-      placemark?.thoroughfare,
-      placemark?.locality,
-      placemark?.administrativeArea,
-      placemark?.country
-    ].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     return [
       "province": placemark?.administrativeArea ?? "",
-      "locality": placemark?.subLocality ?? "",
-      "fullAddress": address,
+      "locality": placemark?.subAdministrativeArea ?? "",
+      "fullAddress": fullAddress(from: placemark),
       "countryCode": placemark?.isoCountryCode ?? "",
       "country": placemark?.country ?? "",
-      "street": placemark?.thoroughfare ?? "",
+      "street": street(from: placemark),
       "latitude": location.map { String($0.coordinate.latitude) } ?? "",
       "longitude": location.map { String($0.coordinate.longitude) } ?? "",
-      "city": placemark?.locality ?? "",
+      "city": placemark?.locality ?? placemark?.subAdministrativeArea ?? "",
       "permissionStatus": status
     ]
+  }
+
+  private func street(from placemark: CLPlacemark?) -> String {
+    guard let placemark else { return "" }
+    return placemark.postalAddress?.street
+      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+  }
+
+  private func fullAddress(from placemark: CLPlacemark?) -> String {
+    guard let placemark else { return "" }
+    let streetNumber = [placemark.thoroughfare, placemark.subThoroughfare]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+      .joined(separator: " ")
+    let parts = [
+      placemark.country,
+      placemark.administrativeArea,
+      placemark.locality,
+      placemark.subAdministrativeArea,
+      placemark.subLocality,
+      streetNumber
+    ]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+    return uniqueAddressParts(parts).joined(separator: " ")
+  }
+
+  private func uniqueAddressParts(_ parts: [String]) -> [String] {
+    var seen = Set<String>()
+    return parts.filter { seen.insert($0).inserted }
   }
 
   private func locationStatus(_ status: CLAuthorizationStatus) -> String {

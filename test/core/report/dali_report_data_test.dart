@@ -26,15 +26,16 @@ void main() {
     elapsedMillis: 42,
     uptimeMillis: '1000',
     isUsingProxy: 1,
+    isUsingVpn: 1,
     language: 'en',
     carrier: 'Globe',
     networkType: 'WIFI',
-    timeZoneName: 'Asia/Manila',
+    timeZoneName: 'GMT+8',
     cpuCoreCount: 6,
     brand: 'Apple',
     deviceName: 'Juan iPhone',
     model: 'iPhone17,1',
-    modelName: 'iPhone 16 Pro',
+    modelName: 'native-model-name',
     systemVersion: '18.0',
     packageName: 'com.dali.cash',
     screenHeight: 2556,
@@ -71,6 +72,8 @@ void main() {
     const iv = '16f7ddfc7aef7a2e';
     final encrypted = encryptDaliDeviceReport(
       snapshot: snapshot,
+      deviceModel: 'iPhone 16 Pro',
+      physicalSize: '6.3',
       location: location,
       lastLoginAtMillis: 1234,
       nowMillis: 5678,
@@ -90,7 +93,11 @@ void main() {
     expect(payload['autohypnosis']['pollinosis']['mastless'], 'Makati');
     expect(payload['murmurous']['pithecoid'], 'idfv-1');
     expect(payload['murmurous']['optimisation'], 5678);
+    expect(payload['murmurous']['onomatologist'], 1);
+    expect(payload['murmurous']['fraudulently'], 'GMT+8');
+    expect(payload['hesitate']['droplet'], '');
     expect(payload['hesitate']['bellow'], 'iPhone 16 Pro');
+    expect(payload['hesitate']['beachwear'], '6.3');
     expect(payload['terminates']['seed']['crocidolites'], 'Home');
     expect(payload['homeric']['polyneuritises'], '200');
   });

@@ -80,17 +80,24 @@ class SessionStore {
     await _setString(physicalSizeKey, physicalSize);
   }
 
-  Future<void> clearPersistent() async {
+  Future<void> clearSession() => _clearPersistent(clearDeviceInfo: false);
+
+  Future<void> clearPersistent() => _clearPersistent(clearDeviceInfo: true);
+
+  Future<void> _clearPersistent({required bool clearDeviceInfo}) async {
     final memory = _memory;
     if (memory != null) {
       memory
         ..remove(sessionIdKey)
-        ..remove(deviceNameKey)
-        ..remove(physicalSizeKey)
         ..remove(productDetailPromptKey)
         ..remove(productDetailIdentityConfirmationPromptKey)
         ..remove(productDetailFacePromptKey)
         ..remove(productDetailOrderNoKey);
+      if (clearDeviceInfo) {
+        memory
+          ..remove(deviceNameKey)
+          ..remove(physicalSizeKey);
+      }
       _productDetailPrompt = '';
       _productDetailIdentityConfirmationPrompt = '';
       _productDetailFacePrompt = '';
@@ -99,8 +106,10 @@ class SessionStore {
       return;
     }
     await _preferences!.remove(sessionIdKey);
-    await _preferences.remove(deviceNameKey);
-    await _preferences.remove(physicalSizeKey);
+    if (clearDeviceInfo) {
+      await _preferences.remove(deviceNameKey);
+      await _preferences.remove(physicalSizeKey);
+    }
     await _preferences.remove(productDetailPromptKey);
     await _preferences.remove(productDetailIdentityConfirmationPromptKey);
     await _preferences.remove(productDetailFacePromptKey);

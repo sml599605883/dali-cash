@@ -664,7 +664,7 @@ void main() {
   test('auth expired invokes handler once and throws', () async {
     var calls = 0;
     adapter.responseBody =
-        '{"felicitous":-2,"cuckoo":"Login expired","unsphered":null}';
+        '{"felicitous":-2,"cuckoo":"Please sign in again","unsphered":null}';
     client = ApiClient(
       ApiConfig(
         apiBaseUrl: 'http://api.test/manlikely',
@@ -680,7 +680,13 @@ void main() {
     await expectLater(
       client.get('/lutes/unsphered'),
       throwsA(
-        isA<ApiBusinessException>().having((error) => error.code, 'code', -2),
+        isA<ApiBusinessException>()
+            .having((error) => error.code, 'code', -2)
+            .having(
+              (error) => error.message,
+              'message',
+              'Please sign in again',
+            ),
       ),
     );
     expect(calls, 1);

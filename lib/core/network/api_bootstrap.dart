@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../client/client_bridge.dart';
 import '../device/device_info_sync.dart';
 import '../session/session_store.dart';
+import '../../app/navigation/navigation_helper.dart';
 import 'api_client.dart';
 import 'api_config.dart';
 import 'api_exception.dart';
@@ -24,6 +25,8 @@ Future<ApiClient> bootstrapApiClient({
     ..clientBridge = bridge
     ..sessionStore = store;
   final client = ApiClient(config, dio: dio);
+  config.authExpiredHandler ??= () =>
+      NavigationHelper.redirectToLoginAfterSessionExpiry(apiClient: client);
   final overrideHost = proxyHost ?? const String.fromEnvironment('PROXY_HOST');
   final overridePort =
       proxyPort ??

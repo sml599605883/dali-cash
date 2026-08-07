@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../client/client_bridge.dart';
 
 typedef NativePermissionRequester = Future<Object?> Function();
+typedef PermissionAction = Future<void> Function();
 typedef PermissionDelay = Future<void> Function(Duration duration);
 typedef LocationServiceStatusProvider = Future<ServiceStatus> Function();
 typedef LocationPermissionStatusProvider = Future<PermissionStatus> Function();
@@ -21,6 +24,7 @@ class PermissionCoordinator {
   PermissionCoordinator({
     required NativePermissionRequester requestNotificationPermission,
     required NativePermissionRequester requestTrackingPermission,
+    PermissionAction? registerForRemoteNotifications,
     this.requestDelay = const Duration(milliseconds: 400),
     PermissionDelay? delay,
     LocationServiceStatusProvider? locationServiceStatusProvider,
@@ -28,6 +32,8 @@ class PermissionCoordinator {
     LocationPermissionRequester? locationPermissionRequester,
   }) : _requestNotificationPermission = requestNotificationPermission,
        _requestTrackingPermission = requestTrackingPermission,
+       _registerForRemoteNotifications =
+           registerForRemoteNotifications ?? _noopPermissionAction,
        _delay = delay ?? Future<void>.delayed,
        _locationServiceStatusProvider =
            locationServiceStatusProvider ?? _defaultLocationServiceStatus,
@@ -39,6 +45,11 @@ class PermissionCoordinator {
   factory PermissionCoordinator.defaultInstance() {
     return PermissionCoordinator(
       requestNotificationPermission: Permission.notification.request,
+      registerForRemoteNotifications: () async {
+        if (Platform.isIOS) {
+          await ClientBridge.shared.registerForRemoteNotifications();
+        }
+      },
       requestTrackingPermission: () {
         if (!Platform.isIOS) {
           return Future<Object?>.value(PermissionStatus.granted);
@@ -53,6 +64,7 @@ class PermissionCoordinator {
 
   final NativePermissionRequester _requestNotificationPermission;
   final NativePermissionRequester _requestTrackingPermission;
+  final PermissionAction _registerForRemoteNotifications;
   final PermissionDelay _delay;
   final LocationServiceStatusProvider _locationServiceStatusProvider;
   final LocationPermissionStatusProvider _locationPermissionStatusProvider;
@@ -75,6 +87,7 @@ class PermissionCoordinator {
     try {
       await _delay(requestDelay);
       await _requestNotificationPermission();
+      await _registerForRemoteNotifications();
       await _delay(requestDelay);
       await _requestTrackingPermission();
     } catch (_) {
@@ -121,14 +134,18 @@ class PermissionCoordinator {
         return CertificationLocationDecision.settingsRequired;
       }
 
-      final requestedStatus = await _locationPermissionRequester();
+      final requestedStatus =
+          await _requestLocationPermissionUntilInterrupted();
+      if (requestedStatus == null) {
+        return CertificationLocationDecision.denied;
+      }
       if (_isGranted(requestedStatus)) {
         return CertificationLocationDecision.granted;
       }
       if (_requiresSettings(requestedStatus)) {
         return CertificationLocationDecision.settingsRequired;
       }
-      return CertificationLocationDecision.denied;
+      return CertificationLocationDecision.settingsRequired;
     } catch (_) {
       return CertificationLocationDecision.denied;
     }
@@ -140,6 +157,40 @@ class PermissionCoordinator {
 
   bool _requiresSettings(PermissionStatus status) {
     return status.isPermanentlyDenied || status.isRestricted;
+  }
+
+  Future<PermissionStatus?> _requestLocationPermissionUntilInterrupted() async {
+    final interrupted = Completer<PermissionStatus?>();
+    final observer = _LocationPermissionLifecycleObserver(() {
+      if (!interrupted.isCompleted) {
+        interrupted.complete();
+      }
+    });
+    WidgetsBinding.instance.addObserver(observer);
+    try {
+      return await Future.any<PermissionStatus?>([
+        _locationPermissionRequester().then<PermissionStatus?>((status) {
+          return status;
+        }),
+        interrupted.future,
+      ]);
+    } finally {
+      WidgetsBinding.instance.removeObserver(observer);
+    }
+  }
+}
+
+class _LocationPermissionLifecycleObserver extends WidgetsBindingObserver {
+  _LocationPermissionLifecycleObserver(this.onInterrupted);
+
+  final VoidCallback onInterrupted;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      onInterrupted();
+    }
   }
 }
 
@@ -167,3 +218,5 @@ Future<PermissionStatus> _defaultLocationRequest() {
   }
   return Permission.locationWhenInUse.request();
 }
+
+Future<void> _noopPermissionAction() async {}

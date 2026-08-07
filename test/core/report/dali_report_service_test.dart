@@ -5,6 +5,7 @@ import 'package:dali_cash/core/client/client_bridge.dart';
 import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
+import 'package:dali_cash/core/network/api_crypto.dart';
 import 'package:dali_cash/core/network/api_response.dart';
 import 'package:dali_cash/core/report/dali_report_service.dart';
 import 'package:dali_cash/core/report/dali_report_store.dart';
@@ -18,10 +19,14 @@ void main() {
   late FakeDaliApi api;
   late StreamController<Json> events;
   late DaliReportService service;
+  late String pushToken;
+  late String trackingStatus;
 
   setUp(() {
     api = FakeDaliApi();
     events = StreamController<Json>.broadcast();
+    pushToken = 'push-token';
+    trackingStatus = 'authorized';
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           switch (call.method) {
@@ -30,6 +35,8 @@ void main() {
                 'idfv': 'idfv-1',
                 'idfa': '',
                 'riskDeviceId': 'risk-1',
+                'model': 'iPhone17,1',
+                'screenSize': '',
                 'systemVersion': '18.0',
                 'packageName': 'com.dali.cash',
               };
@@ -40,7 +47,9 @@ void main() {
                 'city': 'Makati',
               };
             case 'getPushToken':
-              return 'push-token';
+              return pushToken;
+            case 'getTrackingStatus':
+              return trackingStatus;
             default:
               return null;
           }
@@ -62,6 +71,8 @@ void main() {
   });
 
   test('Google Market reports every trigger with empty IDFA', () async {
+    trackingStatus = 'denied';
+
     await service.reportGoogleMarket();
     await service.reportGoogleMarket();
 
@@ -70,12 +81,73 @@ void main() {
     expect(api.adjustTokens, ['adjust-token']);
   });
 
+  test(
+    'startup waits for a final tracking status before Market report',
+    () async {
+      trackingStatus = 'not_determined';
+
+      await service.start();
+      events.add(
+        Json(const <String, dynamic>{
+          'type': 'tracking_status_changed',
+          'status': 'not_determined',
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(api.marketCalls, 0);
+
+      trackingStatus = 'authorized';
+      events.add(
+        Json(const <String, dynamic>{
+          'type': 'tracking_status_changed',
+          'status': 'authorized',
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(api.marketCalls, 1);
+
+      events.add(
+        Json(const <String, dynamic>{
+          'type': 'tracking_status_changed',
+          'status': 'denied',
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(api.marketCalls, 1);
+    },
+  );
+
+  test('resume does not trigger another Google Market report', () async {
+    await service.start();
+    await Future<void>.delayed(Duration.zero);
+    expect(api.marketCalls, 1);
+
+    await service.resumed();
+    events.add(
+      Json(const <String, dynamic>{
+        'type': 'tracking_status_changed',
+        'status': 'authorized',
+      }),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(api.marketCalls, 1);
+  });
+
   test('startup token event uploads once', () async {
     await service.start();
     events.add(Json(const <String, dynamic>{'type': 'push_token'}));
     await Future<void>.delayed(Duration.zero);
 
     expect(api.pushCalls, 1);
+  });
+
+  test('empty push token is still reported after permission denial', () async {
+    pushToken = '';
+
+    await service.reportAppleToken();
+
+    expect(api.pushTokens, ['']);
   });
 
   test('login reports the current token every time', () async {
@@ -93,11 +165,36 @@ void main() {
     expect(api.deviceCalls, 0);
 
     await api.config.sessionStore.saveSessionId('session-1');
+    await api.config.sessionStore.saveDeviceInfo(
+      deviceName: 'iPhone 16 Pro',
+      physicalSize: '6.3',
+    );
     await service.reportLocationAndDevice();
 
     expect(api.locationCalls, 1);
     expect(api.deviceCalls, 1);
     expect(api.devicePayload, isNotEmpty);
+    final payload =
+        jsonDecode(
+              ApiCrypto(
+                key: api.config.encryptKey,
+                iv: api.config.encryptIv,
+              ).decryptText(api.devicePayload),
+            )
+            as Map<String, dynamic>;
+    expect(payload['hesitate']['droplet'], '');
+    expect(payload['hesitate']['bellow'], 'iPhone 16 Pro');
+    expect(payload['hesitate']['beachwear'], '6.3');
+  });
+
+  test('location upload failure does not block device details', () async {
+    await api.config.sessionStore.saveSessionId('session-1');
+    api.failLocationReport = true;
+
+    await service.reportLocationAndDevice();
+
+    expect(api.locationCalls, 1);
+    expect(api.deviceCalls, 1);
   });
 
   test('risk report maps scene and resolves the stored order number', () async {
@@ -162,7 +259,9 @@ class FakeDaliApi extends ApiClient {
   final List<String> marketIdfas = <String>[];
   final List<String> adjustTokens = <String>[];
   int pushCalls = 0;
+  final List<String> pushTokens = [];
   int locationCalls = 0;
+  bool failLocationReport = false;
   int deviceCalls = 0;
   String devicePayload = '';
   String riskScene = '';
@@ -200,11 +299,14 @@ class FakeDaliApi extends ApiClient {
     required String city,
   }) async {
     locationCalls++;
+    if (failLocationReport) throw StateError('location report failed');
     return _success();
   }
 
   @override
-  Future<ApiResponse> reportDeviceInfo({required String encryptedPayload}) async {
+  Future<ApiResponse> reportDeviceInfo({
+    required String encryptedPayload,
+  }) async {
     deviceCalls++;
     devicePayload = encryptedPayload;
     return _success();
@@ -213,6 +315,7 @@ class FakeDaliApi extends ApiClient {
   @override
   Future<ApiResponse> reportApplePushToken({required String token}) async {
     pushCalls++;
+    pushTokens.add(token);
     return _success();
   }
 
