@@ -33,6 +33,8 @@ class DaliReportStore {
     return _setString(_locationKey, jsonEncode(location.toMap()));
   }
 
+  Future<void> clearSessionReportState() => _remove(_locationKey);
+
   Future<DaliLocationSnapshot?> cachedLocation() async {
     final raw = await _string(_locationKey);
     if (raw.isEmpty) return null;
@@ -89,5 +91,14 @@ class DaliReportStore {
       return;
     }
     await _preferences!.setBool(key, value);
+  }
+
+  Future<void> _remove(String key) async {
+    final memory = _memory;
+    if (memory != null) {
+      memory.remove(key);
+      return;
+    }
+    await _preferences!.remove(key);
   }
 }

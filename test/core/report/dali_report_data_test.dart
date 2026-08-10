@@ -95,7 +95,7 @@ void main() {
     expect(payload['murmurous']['optimisation'], 5678);
     expect(payload['murmurous']['onomatologist'], 1);
     expect(payload['murmurous']['fraudulently'], 'GMT+8');
-    expect(payload['hesitate']['droplet'], '');
+    expect(payload['hesitate'].containsKey('droplet'), isFalse);
     expect(payload['hesitate']['bellow'], 'iPhone 16 Pro');
     expect(payload['hesitate']['beachwear'], '6.3');
     expect(payload['terminates']['seed']['crocidolites'], 'Home');

@@ -237,7 +237,6 @@ String encryptDaliDeviceReport({
       'rato': snapshot.elapsedMillis,
     },
     'hesitate': <String, dynamic>{
-      'droplet': '',
       'bicycle': daliReportText(snapshot.brand),
       'anacondas': snapshot.cpuCoreCount,
       'uncounted': snapshot.screenHeight,

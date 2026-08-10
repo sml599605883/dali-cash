@@ -49,6 +49,7 @@ class DaliReportService {
     if (_started || _starting) return;
     _starting = true;
     try {
+      await store.clearSessionReportState();
       _listenToNativeEvents();
       _waitingForTrackingDecision = true;
       final trackingStatus = await client.config.clientBridge
@@ -137,6 +138,7 @@ class DaliReportService {
   Future<void> reportGoogleMarket() async {
     final trackingStatus = await client.config.clientBridge.getTrackingStatus();
     if (!_isResolvedTrackingStatus(trackingStatus)) return;
+    _waitingForTrackingDecision = false;
     await _reportResolvedGoogleMarket();
   }
 

@@ -20,6 +20,21 @@ void main() {
     expect(await store.isAdjustInitialized(), isTrue);
   });
 
+  test('clears only location state from the previous app run', () async {
+    final store = DaliReportStore.memory();
+    await store.saveLoginAt(1234);
+    await store.saveLocation(
+      const DaliLocationSnapshot(latitude: '14.5547', longitude: '121.0244'),
+    );
+    await store.markAdjustInitialized();
+
+    await store.clearSessionReportState();
+
+    expect(await store.cachedLocation(), isNull);
+    expect(await store.loginAt(), 1234);
+    expect(await store.isAdjustInitialized(), isTrue);
+  });
+
   test('does not restore an invalid cached location', () async {
     final store = DaliReportStore.memory();
     await store.saveLocation(DaliLocationSnapshot.empty);

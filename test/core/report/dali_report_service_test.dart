@@ -7,6 +7,7 @@ import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_crypto.dart';
 import 'package:dali_cash/core/network/api_response.dart';
+import 'package:dali_cash/core/report/dali_report_data.dart';
 import 'package:dali_cash/core/report/dali_report_service.dart';
 import 'package:dali_cash/core/report/dali_report_store.dart';
 import 'package:dali_cash/core/session/session_store.dart';
@@ -81,6 +82,21 @@ void main() {
     expect(api.adjustTokens, ['adjust-token']);
   });
 
+  test('startup clears location cached by the previous app run', () async {
+    await service.store.saveLocation(
+      const DaliLocationSnapshot(
+        latitude: '10',
+        longitude: '20',
+        city: 'Previous city',
+      ),
+    );
+
+    await service.start();
+    await service.start();
+
+    expect(await service.store.cachedLocation(), isNull);
+  });
+
   test(
     'startup waits for a final tracking status before Market report',
     () async {
@@ -116,6 +132,25 @@ void main() {
       expect(api.marketCalls, 1);
     },
   );
+
+  test('permission completion reports once and closes event waiting', () async {
+    trackingStatus = 'not_determined';
+    await service.start();
+    expect(api.marketCalls, 0);
+
+    trackingStatus = 'denied';
+    await service.reportGoogleMarket();
+    expect(api.marketCalls, 1);
+
+    events.add(
+      Json(const <String, dynamic>{
+        'type': 'tracking_status_changed',
+        'status': 'authorized',
+      }),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(api.marketCalls, 1);
+  });
 
   test('resume does not trigger another Google Market report', () async {
     await service.start();
@@ -182,7 +217,7 @@ void main() {
               ).decryptText(api.devicePayload),
             )
             as Map<String, dynamic>;
-    expect(payload['hesitate']['droplet'], '');
+    expect(payload['hesitate'].containsKey('droplet'), isFalse);
     expect(payload['hesitate']['bellow'], 'iPhone 16 Pro');
     expect(payload['hesitate']['beachwear'], '6.3');
   });

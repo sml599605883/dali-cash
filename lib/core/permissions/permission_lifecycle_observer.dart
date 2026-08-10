@@ -13,11 +13,13 @@ class PermissionLifecycleObserver extends WidgetsBindingObserver {
     required PermissionRequest requestResumeTrackingPermission,
     PermissionRequest? reportAppStarted,
     PermissionRequest? reportAppResumed,
+    PermissionRequest? reportTrackingDecision,
     PermissionRequest? reportPushToken,
   }) : _requestStartupPermissions = requestStartupPermissions,
        _requestResumeTrackingPermission = requestResumeTrackingPermission,
        _reportAppStarted = reportAppStarted ?? _noop,
        _reportAppResumed = reportAppResumed ?? _noop,
+       _reportTrackingDecision = reportTrackingDecision ?? _noop,
        _reportPushToken = reportPushToken ?? _noop;
 
   static final PermissionLifecycleObserver instance =
@@ -28,6 +30,7 @@ class PermissionLifecycleObserver extends WidgetsBindingObserver {
             PermissionCoordinator.instance.requestResumeTrackingPermission,
         reportAppStarted: _reportStarted,
         reportAppResumed: _reportResumed,
+        reportTrackingDecision: _reportCurrentTrackingDecision,
         reportPushToken: _reportStartedPushToken,
       );
 
@@ -35,6 +38,7 @@ class PermissionLifecycleObserver extends WidgetsBindingObserver {
   final PermissionRequest _requestResumeTrackingPermission;
   final PermissionRequest _reportAppStarted;
   final PermissionRequest _reportAppResumed;
+  final PermissionRequest _reportTrackingDecision;
   final PermissionRequest _reportPushToken;
 
   bool _started = false;
@@ -54,6 +58,11 @@ class PermissionLifecycleObserver extends WidgetsBindingObserver {
       await _requestStartupPermissions();
     } catch (_) {
       // Permission failures must not prevent the push report attempt.
+    }
+    try {
+      await _reportTrackingDecision();
+    } catch (_) {
+      // Tracking reports must not prevent the push report attempt.
     }
     try {
       await _reportPushToken();
@@ -79,6 +88,10 @@ Future<void> _reportStarted() async {
 
 Future<void> _reportResumed() async {
   await DaliReportService.current?.resumed();
+}
+
+Future<void> _reportCurrentTrackingDecision() async {
+  await DaliReportService.current?.reportGoogleMarket();
 }
 
 Future<void> _reportStartedPushToken() async {
