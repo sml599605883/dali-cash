@@ -26,6 +26,7 @@ class AccountListItem {
     required this.lastName,
     required this.isMain,
     required this.isUnderMaintenance,
+    this.maintenanceText = '',
   });
 
   final String bindId;
@@ -38,6 +39,7 @@ class AccountListItem {
   final String lastName;
   final bool isMain;
   final bool isUnderMaintenance;
+  final String maintenanceText;
 }
 
 List<AccountListSection> parseAccountSections(Json states) {
@@ -69,6 +71,7 @@ List<AccountListSection> parseAccountSections(Json states) {
           lastName: option['sloid'].stringValue.trim(),
           isMain: accountJson['exploitable'].boolValue,
           isUnderMaintenance: _isExactZero(accountJson['precolonial']),
+          maintenanceText: accountJson['chalones'].stringValue.trim(),
         ),
       );
     }

@@ -256,6 +256,25 @@ void main() {
     expect(savedFields?['global'], '100');
   });
 
+  testWidgets('shows server maintenance text for unavailable options', (
+    tester,
+  ) async {
+    await _pumpPage(
+      tester,
+      load: (_) async => _bindCardData(
+        channelAvailable: false,
+        maintenanceText: 'Temporarily under maintenance',
+      ),
+      save: (_, _, _, _) async => _response(0),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bindCardPicker_global')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Temporarily under maintenance'), findsOneWidget);
+  });
+
   testWidgets('submits values under server-provided obfuscated field keys', (
     tester,
   ) async {
@@ -283,39 +302,35 @@ void main() {
     });
   });
 
-  testWidgets('blocks mismatched obfuscated account fields', (tester) async {
-    final errors = <String>[];
-    var saveCount = 0;
+  testWidgets('submits incomplete obfuscated account fields', (tester) async {
+    Map<String, String>? savedFields;
     await _pumpPage(
       tester,
-      load: (_) async => _obfuscatedBindCardData(
-        accountValue: '09171234567',
-        confirmationValue: '09999999999',
-      ),
-      showError: (message) async => errors.add(message),
+      load: (_) async =>
+          _obfuscatedBindCardData(accountValue: '', confirmationValue: ''),
       save: (productId, cardType, fields, liveness) async {
-        saveCount++;
+        savedFields = fields;
         return _response(0);
       },
     );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('bindCardUpload')));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(saveCount, 0);
-    expect(errors, ['Account numbers do not match']);
+    expect(savedFields?['whops'], '');
+    expect(savedFields?['shallowly'], '');
   });
 
-  testWidgets('blocks mismatched account confirmation', (tester) async {
-    final errors = <String>[];
-    var saveCount = 0;
+  testWidgets('submits mismatched account confirmation to the server', (
+    tester,
+  ) async {
+    Map<String, String>? savedFields;
     await _pumpPage(
       tester,
       load: (_) async => _bindCardData(channelValue: '100'),
-      showError: (message) async => errors.add(message),
       save: (productId, cardType, fields, liveness) async {
-        saveCount++;
+        savedFields = fields;
         return _response(0);
       },
     );
@@ -330,10 +345,10 @@ void main() {
       '09999999999',
     );
     await tester.tap(find.byKey(const Key('bindCardUpload')));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(saveCount, 0);
-    expect(errors, ['Account numbers do not match']);
+    expect(savedFields?['whops'], '09171234567');
+    expect(savedFields?['shallowly'], '09999999999');
   });
 
   testWidgets('normal success reports scene 8 and continues', (tester) async {
@@ -786,6 +801,8 @@ BindCardData _bindCardData({
   String channelValue = '',
   String accountValue = '',
   bool includeSuggestions = false,
+  bool channelAvailable = true,
+  String maintenanceText = '',
 }) {
   return BindCardData.fromJson(
     Json({
@@ -806,7 +823,8 @@ BindCardData _bindCardData({
                   'sociologeses': 100,
                   'crocidolites': 'COINS e-wallet',
                   'leachate': '',
-                  'precolonial': 1,
+                  'precolonial': channelAvailable ? 1 : 0,
+                  'chalones': maintenanceText,
                 },
               ],
             },

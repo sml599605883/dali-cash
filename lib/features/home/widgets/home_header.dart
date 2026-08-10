@@ -1,10 +1,13 @@
 import 'package:dali_cash/app/layout/screen_adapter.dart';
+import 'package:dali_cash/app/navigation/navigation_helper.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key});
+  const HomeHeader({super.key, this.onCustomerServiceTap});
+
+  final VoidCallback? onCustomerServiceTap;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +35,7 @@ class HomeHeader extends StatelessWidget {
             height: ScreenAdapter.height(40),
             child: InkResponse(
               key: const Key('home-customer-service'),
-              onTap: () {},
+              onTap: onCustomerServiceTap ?? _openCustomerService,
               radius: ScreenAdapter.width(24),
               child: Center(
                 child: Image.asset(
@@ -47,4 +50,8 @@ class HomeHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+void _openCustomerService() {
+  NavigationHelper.toWebPath<void>(path: NavigationHelper.customerServicePath);
 }

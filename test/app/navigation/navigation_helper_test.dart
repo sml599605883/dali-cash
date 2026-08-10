@@ -189,6 +189,7 @@ void main() {
     );
 
     expect(apiClient.detailedProducts, ['2']);
+    expect(feedbackEvents, ['loading', 'dismiss']);
     expect(navigationLogs.single, contains('status=0'));
   });
 

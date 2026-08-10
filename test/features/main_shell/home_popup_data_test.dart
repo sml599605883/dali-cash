@@ -10,7 +10,7 @@ void main() {
         'rheologists': {
           'penes': '1.1.4',
           'pinchbug': 'Install the latest version.',
-          'bloomeries': 'https://store.example.test/app',
+          'millipede': 'https://store.example.test/app',
         },
       }),
     );
@@ -27,8 +27,8 @@ void main() {
         'sociologeses': 3,
         'rheologists': {
           'mourningly': 'New product',
-          'tanists': ' https://cdn.example.test/popup.png ',
-          'bloomeries': 'https://h5.example.test/product',
+          'cilantro': ' https://cdn.example.test/popup.png ',
+          'millipede': 'https://h5.example.test/product',
         },
       }),
     );
@@ -40,7 +40,7 @@ void main() {
       HomePopupData.fromResponse(
         Json({
           'sociologeses': 3,
-          'rheologists': {'tanists': ' '},
+          'rheologists': {'cilantro': ' '},
         }),
       ).shouldShow,
       isFalse,

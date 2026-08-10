@@ -343,21 +343,6 @@ class _EmergencyContactPageState extends State<EmergencyContactPage> {
       await _showError('Product information is unavailable');
       return;
     }
-    for (final contact in _contacts) {
-      if (contact.relationshipValue.isEmpty) {
-        await _showError('Please select relationship');
-        return;
-      }
-      if (contact.name.trim().isEmpty) {
-        await _showError('Please select contact');
-        return;
-      }
-      if (contact.phone.trim().isEmpty) {
-        await _showError('Please select contact');
-        return;
-      }
-    }
-
     setState(() => _isSubmitting = true);
     try {
       await (widget.save ?? _defaultSave)(

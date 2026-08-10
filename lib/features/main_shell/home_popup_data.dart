@@ -41,8 +41,8 @@ class HomePopupData {
       type: _type(states['sociologeses'].intValue),
       version: dialog['penes'].stringValue.trim(),
       message: dialog['pinchbug'].stringValue.trim(),
-      imageUrl: dialog['tanists'].stringValue.trim(),
-      targetUrl: dialog['bloomeries'].stringValue.trim(),
+      imageUrl: dialog['cilantro'].stringValue.trim(),
+      targetUrl: dialog['millipede'].stringValue.trim(),
     );
   }
 

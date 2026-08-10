@@ -17,7 +17,7 @@ class BindCardOption {
       value: json['sociologeses'].stringValue.trim(),
       logoUrl: json['leachate'].stringValue.trim(),
       available: json['precolonial'].intValue != 0,
-      maintenanceText: json['cyclometers'].stringValue.trim(),
+      maintenanceText: json['chalones'].stringValue.trim(),
     );
   }
 

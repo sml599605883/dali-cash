@@ -7,7 +7,6 @@ class HomeData {
     required List<HomeBannerData> banners,
     required List<HomeRecommendationData> recommendations,
     List<ProgressItem> progressItems = const <ProgressItem>[],
-    this.showCreditActivationProgress = false,
   }) : banners = List.unmodifiable(banners),
        recommendations = List.unmodifiable(recommendations),
        progressItems = List.unmodifiable(progressItems);
@@ -24,7 +23,7 @@ class HomeData {
         continue;
       }
 
-      final type = section['sociologeses'].stringValue;
+      final type = section['sociologeses'].stringValue.trim();
       final items = section['jambes'].listOrNull;
       if (items == null) {
         continue;
@@ -61,7 +60,6 @@ class HomeData {
       banners: banners,
       recommendations: recommendations,
       progressItems: progressItems,
-      showCreditActivationProgress: _hasContent(states['lyings']),
     );
   }
 
@@ -69,7 +67,8 @@ class HomeData {
   final List<HomeBannerData> banners;
   final List<HomeRecommendationData> recommendations;
   final List<ProgressItem> progressItems;
-  final bool showCreditActivationProgress;
+  List<HomeCreditActivationItem> get creditActivationItems =>
+      loanOffer?.creditActivationItems ?? const <HomeCreditActivationItem>[];
 }
 
 abstract final class _HomeElementType {
@@ -77,7 +76,7 @@ abstract final class _HomeElementType {
   static const largeCard = 'QuininaSpeculation';
   static const smallCard = 'Rattons';
   static const productList = 'Apocalypse';
-  static const processList = 'PROCESS_LIST';
+  static const processList = 'Absorbabilities';
 }
 
 class HomeLoanOfferData {
@@ -92,6 +91,7 @@ class HomeLoanOfferData {
     required this.interestRate,
     required this.interestRateCaption,
     this.loanTermRows = const <HomeLoanTermRow>[],
+    this.creditActivationItems = const <HomeCreditActivationItem>[],
     required this.buttonText,
     required this.loanProcessText,
   });
@@ -109,6 +109,7 @@ class HomeLoanOfferData {
       interestRate: json['counterfeiters'].stringValue,
       interestRateCaption: json['euphonically'].stringValue,
       loanTermRows: loanTermRows,
+      creditActivationItems: _creditActivationItems(json),
       buttonText: json['weldor'].stringValue,
       loanProcessText: json['outgnaws'].stringValue,
     );
@@ -124,8 +125,40 @@ class HomeLoanOfferData {
   final String interestRate;
   final String interestRateCaption;
   final List<HomeLoanTermRow> loanTermRows;
+  final List<HomeCreditActivationItem> creditActivationItems;
   final String buttonText;
   final String loanProcessText;
+}
+
+class HomeCreditActivationItem {
+  const HomeCreditActivationItem({
+    required this.title,
+    required this.amount,
+    required this.amountValue,
+    required this.isUnlocked,
+  });
+
+  factory HomeCreditActivationItem.fromJson(Json json) {
+    return HomeCreditActivationItem(
+      title: json['enterostomy'].stringValue.trim(),
+      amount: json['hermaean'].stringValue.trim(),
+      amountValue: json['injective'].numValue,
+      isUnlocked: json['provisos'].boolValue,
+    );
+  }
+
+  final String title;
+  final String amount;
+  final num amountValue;
+  final bool isUnlocked;
+}
+
+List<HomeCreditActivationItem> _creditActivationItems(Json json) {
+  return json['lyings'].listValue
+      .where((item) => item.mapOrNull != null)
+      .map(HomeCreditActivationItem.fromJson)
+      .where((item) => item.title.isNotEmpty || item.amount.isNotEmpty)
+      .toList(growable: false);
 }
 
 class HomeLoanTermRow {
@@ -192,6 +225,7 @@ class HomeRecommendationData {
     required this.loanTerm,
     required this.footer,
     required this.upscales,
+    this.buttonText = 'Apply\nNow',
   });
 
   factory HomeRecommendationData.fromJson(Json json) {
@@ -205,6 +239,7 @@ class HomeRecommendationData {
       loanTerm: json['telfered'].stringValue,
       footer: _joinTags(json['finos']),
       upscales: _int(json['upscales']),
+      buttonText: json['weldor'].stringValue.trim(),
     );
   }
 
@@ -217,6 +252,7 @@ class HomeRecommendationData {
   final String loanTerm;
   final String footer;
   final int upscales;
+  final String buttonText;
 }
 
 String formatHomeAmount(String raw) {
@@ -264,15 +300,4 @@ String _joinTags(Json json) {
       .map((tag) => tag.trim())
       .where((tag) => tag.isNotEmpty)
       .join(' / ');
-}
-
-bool _hasContent(Json json) {
-  final value = json.value;
-  return switch (value) {
-    null => false,
-    String value => value.trim().isNotEmpty,
-    Iterable value => value.isNotEmpty,
-    Map value => value.isNotEmpty,
-    _ => true,
-  };
 }

@@ -27,7 +27,7 @@ void main() {
     expect(find.text('First Name'), findsOneWidget);
     expect(find.text('Middle Name'), findsOneWidget);
     expect(find.text('Last Name'), findsOneWidget);
-    expect(find.text('Maintenance'), findsOneWidget);
+    expect(find.text('Bank temporarily unavailable'), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('accountListContent'))).width,
       343,
@@ -287,6 +287,7 @@ Json _accounts({String mainBindId = 'bind-bank'}) => Json({
           'filmcards': 'BDO',
           'emptiable': '**** 1234',
           'precolonial': 0,
+          'chalones': 'Bank temporarily unavailable',
           'exploitable': mainBindId == 'bind-bank' ? 1 : 0,
         },
       ],

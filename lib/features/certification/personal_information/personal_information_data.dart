@@ -62,6 +62,20 @@ class PersonalInformationField {
         selectedOption = option;
         break;
       }
+      for (final child in option.children) {
+        if (child.label == currentValue ||
+            child.value == currentValue ||
+            '${option.label}|${child.label}' == currentValue ||
+            '${option.value}|${child.value}' == currentValue) {
+          selectedOption = PersonalInformationOption(
+            label: '${option.label}|${child.label}',
+            value: child.value,
+            logoUrl: option.logoUrl,
+          );
+          break;
+        }
+      }
+      if (selectedOption != null) break;
     }
 
     return PersonalInformationField(

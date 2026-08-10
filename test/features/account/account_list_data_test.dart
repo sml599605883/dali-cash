@@ -17,6 +17,7 @@ void main() {
                   'hoover': 42,
                   'leachate': '  https://example.com/logo.png  ',
                   'precolonial': '0',
+                  'chalones': 'Bank temporarily unavailable',
                   'filmcards': true,
                   'emptiable': 123456,
                   'nonbehavioral': {
@@ -49,6 +50,7 @@ void main() {
       expect(account.lastName, 'Cruz');
       expect(account.isMain, isTrue);
       expect(account.isUnderMaintenance, isTrue);
+      expect(account.maintenanceText, 'Bank temporarily unavailable');
     });
 
     test('filters invalid data while preserving section and account order', () {

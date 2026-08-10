@@ -533,18 +533,6 @@ class _BindCardPageState extends State<BindCardPage> {
           ? state.submitValue.trim()
           : state.controller.text.trim();
       fields[field.saveKey] = value;
-      if (field.required && value.isEmpty) {
-        await _showError(
-          '${field.control == BindCardControl.selection ? 'Please select' : 'Please enter'} ${field.title.toLowerCase()}',
-        );
-        return;
-      }
-    }
-    final account = fields['whops'];
-    final confirmation = fields['shallowly'];
-    if (account != null && confirmation != null && account != confirmation) {
-      await _showError('Account numbers do not match');
-      return;
     }
 
     setState(() => _submitting = true);

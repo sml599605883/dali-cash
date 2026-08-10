@@ -19,6 +19,7 @@ typedef LoginRouteNavigator = void Function();
 typedef AuthenticatedProductApply = Future<void> Function(String productId);
 typedef ProgressTargetNavigator =
     Future<void> Function(String target, Object? arguments);
+typedef BannerTargetNavigator = Future<void> Function(String target);
 typedef ProgressRetryResolver = Future<String> Function(String orderNo);
 typedef ProgressAccountResolver =
     Future<void> Function({required String productId, required String orderNo});
@@ -32,6 +33,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
     HomeAsyncAction? dismissLoading,
     LoginRouteNavigator? navigateToLogin,
     AuthenticatedProductApply? onAuthenticatedProductApply,
+    BannerTargetNavigator? navigateBannerTarget,
     ProgressTargetNavigator? navigateProgressTarget,
     ProgressRetryResolver? resolveProgressRetry,
     ProgressAccountResolver? openProgressAccountChange,
@@ -41,6 +43,8 @@ class MainController extends GetxController with WidgetsBindingObserver {
        dismissLoading = dismissLoading ?? _defaultAsyncAction,
        onAuthenticatedProductApply =
            onAuthenticatedProductApply ?? _defaultAuthenticatedProductApply,
+       navigateBannerTarget =
+           navigateBannerTarget ?? NavigationHelper.navigateRawTarget,
        navigateProgressTarget =
            navigateProgressTarget ?? _defaultProgressTargetNavigator,
        resolveProgressRetry = resolveProgressRetry ?? _defaultProgressRetry,
@@ -54,6 +58,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
   final HomeAsyncAction dismissLoading;
   final LoginRouteNavigator navigateToLogin;
   final AuthenticatedProductApply onAuthenticatedProductApply;
+  final BannerTargetNavigator navigateBannerTarget;
   final ProgressTargetNavigator navigateProgressTarget;
   final ProgressRetryResolver resolveProgressRetry;
   final ProgressAccountResolver openProgressAccountChange;
@@ -65,6 +70,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
   final isProgressRefreshing = false.obs;
 
   bool _homeRefreshRequesting = false;
+  bool _minePopupRequesting = false;
   bool _productApplyRequesting = false;
   bool _progressActionRequesting = false;
   bool _isReady = false;
@@ -141,9 +147,6 @@ class MainController extends GetxController with WidgetsBindingObserver {
       return;
     }
     selectedIndex.value = index;
-    if (index == 2) {
-      await refreshStoredPhone();
-    }
     await _requestVisibleTabData();
   }
 
@@ -161,6 +164,9 @@ class MainController extends GetxController with WidgetsBindingObserver {
       await requestHomeDataIfVisible();
     } else if (_isProgressVisible) {
       await refreshProgress();
+    } else if (_isMineVisible) {
+      await refreshStoredPhone();
+      await requestMinePopupIfVisible();
     }
   }
 
@@ -295,26 +301,24 @@ class MainController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> handleBannerTap(HomeBannerData banner) async {
-    final client = _apiClient;
-    if (client == null) {
-      return;
-    }
-    final bannerId = banner.id.trim();
     final targetUrl = banner.targetUrl.trim();
-    if (bannerId.isEmpty || targetUrl.isEmpty) {
+    if (targetUrl.isEmpty) {
       return;
     }
 
-    final sessionId = await client.config.sessionStore.sessionId();
-    if (sessionId.trim().isEmpty) {
-      return;
-    }
-
+    final client = _apiClient;
+    final bannerId = banner.id.trim();
     try {
-      await client.bannerClickRecord(bannerConfigId: bannerId);
+      if (client != null && bannerId.isNotEmpty) {
+        final sessionId = await client.config.sessionStore.sessionId();
+        if (sessionId.trim().isNotEmpty) {
+          await client.bannerClickRecord(bannerConfigId: bannerId);
+        }
+      }
     } catch (_) {
       // Analytics failures must not interrupt Banner interaction.
     }
+    await navigateBannerTarget(targetUrl);
   }
 
   Future<void> requestHomeDataIfVisible() async {
@@ -327,6 +331,8 @@ class MainController extends GetxController with WidgetsBindingObserver {
   bool get _isHomeVisible => selectedIndex.value == 0 && _isMainRoute;
 
   bool get _isProgressVisible => selectedIndex.value == 1 && _isMainRoute;
+
+  bool get _isMineVisible => selectedIndex.value == 2 && _isMainRoute;
 
   bool get _isMainRoute {
     final route = Get.currentRoute;
@@ -388,7 +394,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
       }
     }
     if (popupRequest != null) {
-      unawaited(_handleHomePopup(popupRequest));
+      unawaited(_handlePopup(popupRequest));
     }
     try {
       try {
@@ -419,7 +425,28 @@ class MainController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _handleHomePopup(Future<ApiResponse> request) async {
+  Future<void> requestMinePopupIfVisible() async {
+    final client = _apiClient;
+    if (!_isMineVisible || _minePopupRequesting || client == null) {
+      return;
+    }
+    _minePopupRequesting = true;
+    try {
+      Future<ApiResponse>? popupRequest;
+      try {
+        popupRequest = client.dialog(scene: 2);
+      } catch (_) {
+        popupRequest = null;
+      }
+      if (popupRequest != null) {
+        await _handlePopup(popupRequest);
+      }
+    } finally {
+      _minePopupRequesting = false;
+    }
+  }
+
+  Future<void> _handlePopup(Future<ApiResponse> request) async {
     try {
       final response = await request;
       final popup = HomePopupData.fromResponse(response.states);
@@ -432,7 +459,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
         showNotice('New information available');
       }
     } catch (_) {
-      // Popup failures must not invalidate successfully loaded home content.
+      // Popup failures must not invalidate the visible page content.
     }
   }
 

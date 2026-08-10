@@ -469,7 +469,7 @@ class _OrderInfoRow extends StatelessWidget {
           ),
         ),
         SizedBox(width: ScreenAdapter.width(12)),
-        Flexible(
+        Expanded(
           child: Text(
             value,
             maxLines: 1,

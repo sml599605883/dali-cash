@@ -429,7 +429,9 @@ class _AccountCard extends StatelessWidget {
               if (account.isUnderMaintenance) ...[
                 SizedBox(height: ScreenAdapter.height(8)),
                 Text(
-                  'Maintenance',
+                  account.maintenanceText.isEmpty
+                      ? 'Maintenance'
+                      : account.maintenanceText,
                   style: TextStyle(
                     color: AppColors.alert,
                     fontSize: ScreenAdapter.font(12),

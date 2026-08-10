@@ -63,6 +63,24 @@ void main() {
     expect(admissionProductIds, ['180', '200']);
   });
 
+  testWidgets('aligns each order value to the information area right edge', (
+    tester,
+  ) async {
+    await _pumpPage(tester, loadOrders: (_) async => _orders());
+    await tester.pumpAndSettle();
+
+    final card = find.byKey(const ValueKey('orderCard-174'));
+    final amount = find.descendant(
+      of: card,
+      matching: find.text('PHP 20,000.00'),
+    );
+    final date = find.descendant(of: card, matching: find.text('29-11-2023'));
+
+    expect(tester.widget<Text>(amount).textAlign, TextAlign.right);
+    expect(tester.widget<Text>(date).textAlign, TextAlign.right);
+    expect(tester.getRect(amount).right, tester.getRect(date).right);
+  });
+
   testWidgets('changes filters and pull refreshes the active status', (
     tester,
   ) async {

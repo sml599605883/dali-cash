@@ -22,6 +22,18 @@ abstract final class AppColors {
   static const activationProgressGradientEnd = Color.fromRGBO(253, 64, 110, 1);
   static const activationProgressActive = Color.fromRGBO(253, 92, 108, 1);
   static const activationProgressInactive = Color.fromRGBO(247, 247, 247, 1);
+  static const activationProgressTrackInactive = Color.fromRGBO(
+    255,
+    230,
+    232,
+    1,
+  );
+  static const activationProgressTrackMarkerInactive = Color.fromRGBO(
+    255,
+    172,
+    104,
+    1,
+  );
   static const alert = Color.fromRGBO(246, 18, 18, 1);
   static const buttonShadow = Color.fromRGBO(18, 47, 126, 1);
   static const tabUnselected = Color.fromRGBO(140, 140, 140, 1);

@@ -118,6 +118,41 @@ void main() {
     },
   );
 
+  testWidgets('submits incomplete contacts to the server', (tester) async {
+    List<Map<String, String>>? saved;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyContactPage(
+          productId: 'product-42',
+          load: (_) async => const EmergencyContactData(
+            prompt: '',
+            contacts: [
+              EmergencyContact(
+                number: 'first',
+                relationshipValue: '',
+                relationshipLabel: '',
+                name: '',
+                phone: '',
+                relationshipOptions: [],
+              ),
+            ],
+          ),
+          save: (_, contacts) async => saved = contacts,
+          reportRisk: (_, _) async {},
+          continueFlow: (_) async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('emergencyContactUpload')));
+    await tester.pumpAndSettle();
+
+    expect(saved, [
+      {'poet': '', 'crocidolites': '', 'roebuck': '', 'attractances': 'first'},
+    ]);
+  });
+
   testWidgets('relationship opens only the relationship selection sheet', (
     tester,
   ) async {

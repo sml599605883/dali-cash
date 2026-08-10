@@ -111,8 +111,9 @@ class _RecreditPageState extends State<RecreditPage> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(height: ScreenAdapter.height(290)),
                   Image.asset(
                     AppAssets.recreditIllustration,
                     key: const Key('recredit-illustration'),

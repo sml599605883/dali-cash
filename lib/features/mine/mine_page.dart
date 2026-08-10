@@ -257,8 +257,6 @@ class _OrderShortcut extends StatelessWidget {
 class _CustomerServiceSection extends StatelessWidget {
   const _CustomerServiceSection();
 
-  static const _customerServicePath = '/#/SlinkierDesulfured';
-
   @override
   Widget build(BuildContext context) {
     return _MineSection(
@@ -271,8 +269,9 @@ class _CustomerServiceSection extends StatelessWidget {
           key: const Key('mine-customer-service'),
           iconAsset: AppAssets.mineCustomerService,
           label: 'Smart customer service',
-          onTap: () =>
-              NavigationHelper.toWebPath<void>(path: _customerServicePath),
+          onTap: () => NavigationHelper.toWebPath<void>(
+            path: NavigationHelper.customerServicePath,
+          ),
           showChevron: true,
         ),
       ),
@@ -660,14 +659,18 @@ Future<void> _showAccountActions(
 
 class _RetentionDialogData {
   const _RetentionDialogData({
+    required this.title,
     required this.body,
     required this.keepLabel,
     required this.keepLog,
+    required this.closeLabel,
   });
 
+  final String title;
   final String body;
   final String keepLabel;
   final String keepLog;
+  final String closeLabel;
 }
 
 Future<void> _showRetentionDialog(
@@ -677,16 +680,20 @@ Future<void> _showRetentionDialog(
 }) async {
   final data = action == _AccountAction.logOut
       ? const _RetentionDialogData(
+          title: "Don't Leave Your Cash Behind!",
           body:
-              'Stay logged in to receive instant alerts on your limit and payments.',
-          keepLabel: 'Keep Me In',
-          keepLog: 'Keep Me In',
+              'Your pre-approved credit is ready for instant withdrawal. Leaving now means you might lose this limited-time rate!',
+          keepLabel: 'Stay & Finish',
+          keepLog: 'Stay & Finish',
+          closeLabel: 'Log Out',
         )
       : const _RetentionDialogData(
+          title: 'We’re Sad to See You Go...',
           body:
-              'Once deleted, all your credit history and limit disappear. Stay with us?',
-          keepLabel: 'Keep Account',
-          keepLog: 'Keep Account',
+              'Once deleted, all your accumulated credit score, active offers, and history will be reset instantly. This action cannot be undone.',
+          keepLabel: 'I’ll Stay',
+          keepLog: 'I’ll Stay',
+          closeLabel: 'Delete',
         );
 
   await showGeneralDialog<void>(
@@ -730,7 +737,7 @@ class _AccountRetentionDialogState extends State<_AccountRetentionDialog> {
   @override
   Widget build(BuildContext context) {
     final cardWidth = MediaQuery.sizeOf(context).width - 32;
-    final scale = cardWidth / 343;
+    final cardHeight = cardWidth * 332 / 343;
 
     return Stack(
       key: const Key('account-retention-dialog'),
@@ -747,12 +754,12 @@ class _AccountRetentionDialogState extends State<_AccountRetentionDialog> {
           child: Container(
             key: const Key('account-retention-card'),
             width: cardWidth,
-            height: cardWidth * 332 / 343,
+            height: cardHeight,
             padding: EdgeInsets.fromLTRB(
-              12 * scale,
-              58 * scale,
-              12 * scale,
-              20 * scale,
+              ScreenAdapter.width(12),
+              ScreenAdapter.height(58),
+              ScreenAdapter.width(12),
+              ScreenAdapter.height(20),
             ),
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -762,39 +769,46 @@ class _AccountRetentionDialogState extends State<_AccountRetentionDialog> {
             ),
             child: Column(
               children: [
-                Text(
-                  'Confirm to exit?',
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    color: AppColors.surface,
-                    fontFamily: 'Georgia',
-                    fontSize: 26 * scale,
-                    fontWeight: FontWeight.w700,
-                    height: 30 / 26,
-                  ),
-                ),
-                SizedBox(height: 69 * scale),
                 SizedBox(
-                  width: 253 * scale,
-                  height: 44 * scale,
-                  child: Text(
-                    widget.data.body,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    style: TextStyle(
-                      color: AppColors.retentionBody,
-                      fontSize: 16 * scale,
-                      fontWeight: FontWeight.w400,
-                      height: 22 / 16,
+                  width: ScreenAdapter.width(319),
+                  height: ScreenAdapter.height(30),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      widget.data.title,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: AppColors.surface,
+                        fontFamily: 'Georgia',
+                        fontSize: ScreenAdapter.font(26),
+                        fontWeight: FontWeight.w700,
+                        height: 30 / 26,
+                      ),
                     ),
                   ),
                 ),
-                SizedBox(height: 36 * scale),
+                SizedBox(height: ScreenAdapter.height(32)),
+                SizedBox(
+                  width: ScreenAdapter.width(285),
+                  height: ScreenAdapter.height(80),
+                  child: Text(
+                    widget.data.body,
+                    textAlign: TextAlign.center,
+                    maxLines: 4,
+                    style: TextStyle(
+                      color: AppColors.retentionBody,
+                      fontSize: ScreenAdapter.font(14),
+                      fontWeight: FontWeight.w400,
+                      height: 20 / 14,
+                    ),
+                  ),
+                ),
+                SizedBox(height: ScreenAdapter.height(20)),
                 SizedBox(
                   key: const Key('account-retention-keep'),
-                  width: 319 * scale,
-                  height: 40 * scale,
+                  width: ScreenAdapter.width(319),
+                  height: ScreenAdapter.height(40),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
@@ -812,14 +826,16 @@ class _AccountRetentionDialogState extends State<_AccountRetentionDialog> {
                             AppColors.retentionGradientEnd,
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(20 * scale),
+                        borderRadius: BorderRadius.circular(
+                          ScreenAdapter.width(20),
+                        ),
                       ),
                       child: Center(
                         child: Text(
                           widget.data.keepLabel,
                           style: TextStyle(
                             color: AppColors.surface,
-                            fontSize: 15 * scale,
+                            fontSize: ScreenAdapter.font(15),
                             fontWeight: FontWeight.w700,
                             height: 18 / 15,
                           ),
@@ -828,16 +844,16 @@ class _AccountRetentionDialogState extends State<_AccountRetentionDialog> {
                     ),
                   ),
                 ),
-                SizedBox(height: 16 * scale),
+                SizedBox(height: ScreenAdapter.height(16)),
                 GestureDetector(
                   key: const Key('account-retention-close'),
                   behavior: HitTestBehavior.opaque,
                   onTap: _submitting ? null : _closeAnyway,
                   child: Text(
-                    'Close Anyway',
+                    widget.data.closeLabel,
                     style: TextStyle(
                       color: AppColors.retentionSecondary,
-                      fontSize: 15 * scale,
+                      fontSize: ScreenAdapter.font(15),
                       fontWeight: FontWeight.w700,
                       height: 18 / 15,
                     ),
@@ -852,7 +868,6 @@ class _AccountRetentionDialogState extends State<_AccountRetentionDialog> {
   }
 
   Future<void> _closeAnyway() async {
-    _logTap('Close Anyway');
     setState(() => _submitting = true);
     final coordinator =
         widget.accountSessionCoordinator ?? _defaultAccountSessionCoordinator();

@@ -83,12 +83,14 @@ class _CertificationInformationPageState
   String _loadError = '';
   bool _isSubmitting = false;
   String? _addressLoadingKey;
+  Future<List<PersonalAddressNode>>? _addressPreloadFuture;
   late final int _startedAtSeconds;
 
   @override
   void initState() {
     super.initState();
     _startedAtSeconds = (widget.nowSeconds ?? _nowSeconds)();
+    _addressPreloadFuture = _preloadAddresses();
     unawaited(_load());
   }
 
@@ -394,7 +396,7 @@ class _CertificationInformationPageState
       if (nodes == null) {
         setState(() => _addressLoadingKey = field.data.saveKey);
         try {
-          nodes = await widget.loadAddresses();
+          nodes = await (_addressPreloadFuture ??= _preloadAddresses());
           _addressNodes = nodes;
         } finally {
           if (mounted) setState(() => _addressLoadingKey = null);
@@ -420,6 +422,16 @@ class _CertificationInformationPageState
     }
   }
 
+  Future<List<PersonalAddressNode>> _preloadAddresses() async {
+    try {
+      final nodes = await widget.loadAddresses();
+      if (mounted) _addressNodes = nodes;
+      return nodes;
+    } catch (_) {
+      return const <PersonalAddressNode>[];
+    }
+  }
+
   Future<void> _submit() async {
     if (_isSubmitting) return;
     final productId = _productId();
@@ -430,11 +442,7 @@ class _CertificationInformationPageState
     final payload = <String, String>{};
     for (final field in _fields) {
       final value = field.currentSubmitValue;
-      if (field.data.isRequired && value.isEmpty) {
-        await _presentError(field.data.placeholder);
-        return;
-      }
-      if (value.isNotEmpty) payload[field.data.saveKey] = value;
+      payload[field.data.saveKey] = value;
     }
 
     setState(() => _isSubmitting = true);

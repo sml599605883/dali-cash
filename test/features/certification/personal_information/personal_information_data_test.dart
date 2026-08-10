@@ -207,7 +207,7 @@ void main() {
     final field = data.fields.single;
     expect(field.control, PersonalInformationControl.selection);
     expect(field.initialDisplayValue, 'Once a Month|1');
-    expect(field.initialSubmitValue, 'Once a Month|1');
+    expect(field.initialSubmitValue, '11');
     expect(field.options.last.children.single.label, '1');
     expect(field.options.last.children.single.value, '11');
   });

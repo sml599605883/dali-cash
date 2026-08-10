@@ -80,6 +80,6 @@ void main() {
     await tester.tap(find.text('Upload'));
     await tester.pumpAndSettle();
 
-    expect(submitted, {'opportunities': 'Once a Month|1'});
+    expect(submitted, {'opportunities': '11'});
   });
 }

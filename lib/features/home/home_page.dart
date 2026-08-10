@@ -40,6 +40,8 @@ class HomePage extends GetView<MainController> {
                   final loanOffer = delivered?.loanOffer;
                   final banners = delivered?.banners;
                   final recommendations = delivered?.recommendations;
+                  final creditActivationItems =
+                      delivered?.creditActivationItems;
                   final showLoan = delivered == null || loanOffer != null;
                   final showBanner = delivered == null || banners!.isNotEmpty;
                   final showRecommendations =
@@ -76,10 +78,12 @@ class HomePage extends GetView<MainController> {
                                         ),
                                 ),
                               ],
-                              if (delivered?.showCreditActivationProgress ==
+                              if (creditActivationItems?.isNotEmpty ==
                                   true) ...[
                                 SizedBox(height: ScreenAdapter.height(16)),
-                                const CreditActivationProgress(),
+                                CreditActivationProgress(
+                                  items: creditActivationItems!,
+                                ),
                               ],
                               if (showBanner) ...[
                                 SizedBox(height: ScreenAdapter.height(16)),

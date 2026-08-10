@@ -17,7 +17,7 @@ class CertificationPaydaySelection {
 
   String get displayText => '${parent.label}|${child.label}';
 
-  String get submitValue => displayText;
+  String get submitValue => child.value;
 }
 
 Future<CertificationPaydaySelection?> showCertificationPaydaySelectionSheet({
@@ -68,31 +68,31 @@ class _CertificationPaydaySelectionSheetState
   bool _showChildren = false;
 
   int _initialParentIndex() {
-    final separator = widget.initialValue.indexOf('|');
-    final parentValue =
-        (separator < 0
-                ? widget.initialValue
-                : widget.initialValue.substring(0, separator))
-            .trim()
-            .toLowerCase();
-    final index = widget.options.indexWhere(
-      (option) =>
-          option.label.trim().toLowerCase() == parentValue ||
-          option.value.trim().toLowerCase() == parentValue,
-    );
+    final current = widget.initialValue.trim().toLowerCase();
+    final index = widget.options.indexWhere((option) {
+      final parentMatches =
+          option.label.trim().toLowerCase() == current ||
+          option.value.trim().toLowerCase() == current;
+      final childMatches = option.children.any(
+        (child) =>
+            child.value.trim().toLowerCase() == current ||
+            child.label.trim().toLowerCase() == current ||
+            '${option.label}|${child.label}'.toLowerCase() == current ||
+            '${option.value}|${child.value}'.toLowerCase() == current,
+      );
+      return parentMatches || childMatches;
+    });
     return index < 0 ? 0 : index;
   }
 
   PersonalInformationOption? _initialSelectedChild() {
-    final separator = widget.initialValue.indexOf('|');
-    if (separator < 0) return null;
-    final childValue = widget.initialValue
-        .substring(separator + 1)
-        .trim()
-        .toLowerCase();
+    final current = widget.initialValue.trim().toLowerCase();
+    final parent = widget.options[_parentIndex];
     for (final child in widget.options[_parentIndex].children) {
-      if (child.label.trim().toLowerCase() == childValue ||
-          child.value.trim().toLowerCase() == childValue) {
+      if (child.label.trim().toLowerCase() == current ||
+          child.value.trim().toLowerCase() == current ||
+          '${parent.label}|${child.label}'.toLowerCase() == current ||
+          '${parent.value}|${child.value}'.toLowerCase() == current) {
         return child;
       }
     }

@@ -20,7 +20,7 @@ void main() {
     final illustration = find.byKey(const Key('recredit-illustration'));
     expect(illustration, findsOneWidget);
     expect(tester.getSize(illustration), const Size(120, 102));
-    expect(tester.getTopLeft(illustration).dy, closeTo(290, 1));
+    expect(tester.getTopLeft(illustration).dy, closeTo(301.5, 1));
     expect(
       find.text(
         'Calculating your credit limit, just 30 seconds',

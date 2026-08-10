@@ -131,6 +131,7 @@ void main() {
       },
     );
     await tester.pumpAndSettle();
+    expect(addressLoadCount, 1);
 
     final picker = find.byKey(
       const Key('personalInformationPicker_residential_address'),
@@ -151,29 +152,25 @@ void main() {
       find.byKey(const Key('personalInformationAddressLoading')),
       findsNothing,
     );
+    expect(addressLoadCount, 1);
   });
 
-  testWidgets('blocks submission at the first empty required field', (
-    tester,
-  ) async {
-    var saveCount = 0;
-    final errors = <String>[];
+  testWidgets('submits incomplete fields to the server', (tester) async {
+    Map<String, String>? submitted;
     await _pumpPage(
       tester,
       load: (_) async => PersonalInformationData(
         prompt: '',
         fields: [_textField(value: '')],
       ),
-      save: (productId, fields) async => saveCount += 1,
-      showError: (message) async => errors.add(message),
+      save: (productId, fields) async => submitted = fields,
     );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Upload'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(saveCount, 0);
-    expect(errors, ['Please enter phone']);
+    expect(submitted, {'phone': ''});
   });
 
   testWidgets('shows empty and error states with retry', (tester) async {

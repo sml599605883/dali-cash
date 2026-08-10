@@ -31,7 +31,7 @@ void main() {
         events.add('retry:$orderNo');
         return 'https://h5.example/retry';
       },
-      replaceWebView: (url) async => events.add('replace:$url'),
+      reloadOrOpenWebView: (url) async => events.add('reload:$url'),
       changeAccount: ({required productId, required orderNo}) async {
         events.add('change:$productId:$orderNo');
       },
@@ -120,7 +120,7 @@ void main() {
     expect(result.data, {'path': '/lutes/pedants?thunderstruck=1'});
   });
 
-  test('retry always dismisses loading and opens a fresh WebView', () async {
+  test('retry reloads the current WebView and always dismisses loading', () async {
     final result = await coordinator.dispatch(
       DaliWebViewRequest.decode({
         'action': DaliWebViewActions.retryOrder,
@@ -131,7 +131,7 @@ void main() {
     expect(events, [
       'loading',
       'retry:ORDER-2',
-      'replace:https://h5.example/retry',
+      'reload:https://h5.example/retry',
       'dismiss',
     ]);
     expect(result.code, 0);
@@ -159,6 +159,7 @@ void main() {
       'loading',
       'retry:ORDER-2',
       'error:Missing retry result url',
+      'dismiss',
     ]);
     expect(result.code, -1);
     expect(result.message, 'Missing retry result url');

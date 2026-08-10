@@ -97,67 +97,70 @@ class _IdentityConfirmationPageState extends State<IdentityConfirmationPage> {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: Scaffold(
-          backgroundColor: AppColors.pageBackground,
-          body: SafeArea(
-            child: Column(
-              children: [
-                const _IdentityConfirmationHeader(),
-                SizedBox(height: ScreenAdapter.height(10)),
-                IdentityPromptBanner(
-                  message: prompt.isEmpty
-                      ? IdentityConfirmationPage.defaultPromptMessage
-                      : prompt,
-                ),
-                SizedBox(height: ScreenAdapter.height(12)),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: ScreenAdapter.width(16),
-                    ),
-                    child: _IdentityInformationCard(
-                      info: _info,
-                      nameController: _nameController,
-                      idController: _idController,
-                      birthdayController: _birthdayController,
-                      onBirthdayTap: _selectBirthday,
-                    ),
+        child: PopScope(
+          canPop: false,
+          child: Scaffold(
+            backgroundColor: AppColors.pageBackground,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  const _IdentityConfirmationHeader(),
+                  SizedBox(height: ScreenAdapter.height(10)),
+                  IdentityPromptBanner(
+                    message: prompt.isEmpty
+                        ? IdentityConfirmationPage.defaultPromptMessage
+                        : prompt,
                   ),
-                ),
-              ],
-            ),
-          ),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                ScreenAdapter.width(16),
-                ScreenAdapter.height(16),
-                ScreenAdapter.width(16),
-                ScreenAdapter.height(20),
-              ),
-              child: SizedBox(
-                height: ScreenAdapter.height(46),
-                child: ElevatedButton(
-                  key: const Key('identityConfirmationUploadButton'),
-                  onPressed: _isSubmitting ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.surface,
-                    elevation: 0,
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        ScreenAdapter.width(8),
+                  SizedBox(height: ScreenAdapter.height(12)),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ScreenAdapter.width(16),
+                      ),
+                      child: _IdentityInformationCard(
+                        info: _info,
+                        nameController: _nameController,
+                        idController: _idController,
+                        birthdayController: _birthdayController,
+                        onBirthdayTap: _selectBirthday,
                       ),
                     ),
                   ),
-                  child: Text(
-                    'Upload',
-                    style: TextStyle(
-                      color: AppColors.surface,
-                      fontSize: ScreenAdapter.font(16),
-                      fontWeight: FontWeight.w700,
-                      height: 19 / 16,
+                ],
+              ),
+            ),
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  ScreenAdapter.width(16),
+                  ScreenAdapter.height(16),
+                  ScreenAdapter.width(16),
+                  ScreenAdapter.height(20),
+                ),
+                child: SizedBox(
+                  height: ScreenAdapter.height(46),
+                  child: ElevatedButton(
+                    key: const Key('identityConfirmationUploadButton'),
+                    onPressed: _isSubmitting ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
+                      elevation: 0,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          ScreenAdapter.width(8),
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'Upload',
+                      style: TextStyle(
+                        color: AppColors.surface,
+                        fontSize: ScreenAdapter.font(16),
+                        fontWeight: FontWeight.w700,
+                        height: 19 / 16,
+                      ),
                     ),
                   ),
                 ),

@@ -38,6 +38,7 @@ typedef ExternalUriLauncher = Future<bool> Function(Uri uri);
 
 abstract final class NavigationHelper {
   static const _deepLinkParser = DaliDeepLinkParser();
+  static const customerServicePath = '/#/SlinkierDesulfured';
   static const privacyAgreementPath = '/#/Turbocharger';
   static const Map<String, String> _productDetailSteps = <String, String>{
     'public': 'identity',
@@ -441,6 +442,7 @@ abstract final class NavigationHelper {
   static Future<void> navigateRawTarget(
     String rawTarget, {
     Object? arguments,
+    bool manageProductDetailLoading = true,
   }) async {
     final target = rawTarget.trim();
     if (target.isEmpty) {
@@ -448,6 +450,7 @@ abstract final class NavigationHelper {
     }
     await _dispatchDeepLink(
       _deepLinkParser.parse(target, arguments: arguments),
+      manageProductDetailLoading: manageProductDetailLoading,
     );
   }
 
@@ -491,7 +494,10 @@ abstract final class NavigationHelper {
     }
   }
 
-  static Future<void> _dispatchDeepLink(DaliDeepLink target) async {
+  static Future<void> _dispatchDeepLink(
+    DaliDeepLink target, {
+    bool manageProductDetailLoading = true,
+  }) async {
     switch (target.kind) {
       case DaliDeepLinkKind.home:
         backToRoot();
@@ -510,7 +516,21 @@ abstract final class NavigationHelper {
           logger('product detail target is missing highlands: ${target.alias}');
           return;
         }
-        await _productFlow(Get.find<ApiClient>()).loadProductDetail(productId);
+        if (!manageProductDetailLoading) {
+          await _productFlow(
+            Get.find<ApiClient>(),
+          ).loadProductDetail(productId);
+          return;
+        }
+        await loadingPresenter();
+        try {
+          await _productFlow(
+            Get.find<ApiClient>(),
+          ).loadProductDetail(productId);
+          await loadingDismissor();
+        } catch (error) {
+          await errorPresenter(ApiErrorMessage.resolve(error));
+        }
         return;
       case DaliDeepLinkKind.recredit:
         final mergedArguments = <String, dynamic>{
@@ -568,7 +588,11 @@ abstract final class NavigationHelper {
       ensureLocationAccess: _ensureLocationAccess,
       reportLocationAndDevice: locationReporter,
       navigateRawTarget: (target, arguments) {
-        return navigateRawTarget(target, arguments: arguments);
+        return navigateRawTarget(
+          target,
+          arguments: arguments,
+          manageProductDetailLoading: false,
+        );
       },
       handleProductDetail: _handleProductDetail,
       logger: logger,

@@ -26,7 +26,7 @@ void main() {
                     'crocidolites': 'COINS e-wallet',
                     'leachate': 'https://example.com/coins.png',
                     'precolonial': 0,
-                    'cyclometers': 'Maintenance',
+                    'chalones': 'Temporarily under maintenance',
                   },
                 ],
               },
@@ -67,7 +67,10 @@ void main() {
     expect(selection.required, isTrue);
     expect(selection.options.single.value, '100');
     expect(selection.options.single.available, isFalse);
-    expect(selection.options.single.maintenanceText, 'Maintenance');
+    expect(
+      selection.options.single.maintenanceText,
+      'Temporarily under maintenance',
+    );
 
     final account = data.groups.last.fields.single;
     expect(account.control, BindCardControl.text);

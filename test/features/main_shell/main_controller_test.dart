@@ -22,6 +22,7 @@ void main() {
   late List<String> errors;
   late List<String> notices;
   late List<String> loadingEvents;
+  late List<String> bannerTargets;
   late MainController controller;
 
   setUp(() async {
@@ -33,6 +34,7 @@ void main() {
     errors = <String>[];
     notices = <String>[];
     loadingEvents = <String>[];
+    bannerTargets = <String>[];
     controller = MainController(
       apiClient: apiClient,
       showError: (message) {
@@ -42,6 +44,7 @@ void main() {
       showNotice: notices.add,
       showLoading: () async => loadingEvents.add('loading'),
       dismissLoading: () async => loadingEvents.add('dismiss'),
+      navigateBannerTarget: (target) async => bannerTargets.add(target),
     );
   });
 
@@ -557,18 +560,64 @@ void main() {
     },
   );
 
-  test('opening Mine refreshes the phone saved by login', () async {
-    final sessionStore = SessionStore.memory();
-    await sessionStore.saveSessionId('session-id');
-    await sessionStore.savePhone('9123456789');
-    apiClient.config.sessionStore = sessionStore;
+  test(
+    'opening Mine refreshes the phone and requests its popup scene',
+    () async {
+      final sessionStore = SessionStore.memory();
+      await sessionStore.saveSessionId('session-id');
+      await sessionStore.savePhone('9123456789');
+      apiClient.config.sessionStore = sessionStore;
+      apiClient.dialogReplies.add((_) async => _dialogResponse(0));
 
-    await controller.selectTab(2);
+      await controller.selectTab(2);
 
-    expect(controller.phoneNumber.value, '9123456789');
+      expect(controller.phoneNumber.value, '9123456789');
+      expect(apiClient.dialogScenes, [2]);
+    },
+  );
+
+  test('Mine popup requests are deduplicated while one is pending', () async {
+    final dialogCompleter = Completer<ApiResponse>();
+    controller.selectedIndex.value = 2;
+    apiClient.dialogReplies.add((_) => dialogCompleter.future);
+
+    final first = controller.requestMinePopupIfVisible();
+    final second = controller.requestMinePopupIfVisible();
+    await pumpEventQueue();
+
+    expect(apiClient.dialogScenes, [2]);
+
+    dialogCompleter.complete(_dialogResponse(0));
+    await Future.wait([first, second]);
   });
 
-  test('invalid banner fields do not report even when logged in', () async {
+  test('re-entering Mine requests its popup again', () async {
+    apiClient.dialogReplies.addAll([
+      (_) async => _dialogResponse(0),
+      (_) async => _dialogResponse(0),
+    ]);
+
+    await controller.selectTab(2);
+    controller.selectedIndex.value = 0;
+    await controller.selectTab(2);
+
+    expect(apiClient.dialogScenes, [2, 2]);
+  });
+
+  test('Mine popup failure stays silent', () async {
+    controller.selectedIndex.value = 2;
+    apiClient.dialogReplies.add(
+      (_) => Future<ApiResponse>.error(ApiBusinessException('Popup failed')),
+    );
+
+    await controller.requestMinePopupIfVisible();
+
+    expect(apiClient.dialogScenes, [2]);
+    expect(errors, isEmpty);
+    expect(notices, isEmpty);
+  });
+
+  test('banner target is required while its id is optional', () async {
     final sessionStore = SessionStore.memory();
     await sessionStore.saveSessionId('session-id');
     apiClient.config.sessionStore = sessionStore;
@@ -577,24 +626,32 @@ void main() {
     await controller.handleBannerTap(_banner(targetUrl: '   '));
 
     expect(apiClient.bannerClickIds, isEmpty);
+    expect(bannerTargets, ['https://example.test/banner']);
   });
 
-  test('logged-out banner tap does not report', () async {
-    apiClient.config.sessionStore = SessionStore.memory();
+  test(
+    'logged-out banner tap skips reporting but still opens target',
+    () async {
+      apiClient.config.sessionStore = SessionStore.memory();
 
-    await controller.handleBannerTap(_banner());
+      await controller.handleBannerTap(_banner());
 
-    expect(apiClient.bannerClickIds, isEmpty);
-  });
+      expect(apiClient.bannerClickIds, isEmpty);
+      expect(bannerTargets, ['https://example.test/banner']);
+    },
+  );
 
-  test('eligible banner tap trims its id and reports once', () async {
+  test('eligible banner tap reports and opens the trimmed target', () async {
     final sessionStore = SessionStore.memory();
     await sessionStore.saveSessionId('session-id');
     apiClient.config.sessionStore = sessionStore;
 
-    await controller.handleBannerTap(_banner(id: ' banner-42 '));
+    await controller.handleBannerTap(
+      _banner(id: ' banner-42 ', targetUrl: ' https://example.test/banner-42 '),
+    );
 
     expect(apiClient.bannerClickIds, ['banner-42']);
+    expect(bannerTargets, ['https://example.test/banner-42']);
     expect(errors, isEmpty);
     expect(notices, isEmpty);
   });
@@ -608,6 +665,7 @@ void main() {
     await controller.handleBannerTap(_banner());
 
     expect(apiClient.bannerClickIds, ['banner-1']);
+    expect(bannerTargets, ['https://example.test/banner']);
     expect(errors, isEmpty);
     expect(notices, isEmpty);
   });
@@ -649,6 +707,18 @@ void main() {
       );
     },
   );
+
+  test('background resume refreshes the visible Mine popup', () async {
+    controller.selectedIndex.value = 2;
+    apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+
+    controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await pumpEventQueue();
+
+    expect(apiClient.homeCalls, 0);
+    expect(apiClient.dialogScenes, [2]);
+  });
 
   test('inactive resume refreshes only once per controller lifetime', () async {
     apiClient.homeReplies.add(() async => _homeResponse());

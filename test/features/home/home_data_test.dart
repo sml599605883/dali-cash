@@ -82,6 +82,32 @@ void main() {
                   ],
                   'weldor': 'Apply now',
                   'outgnaws': 'Complete authentication and unlock your loan',
+                  'lyings': [
+                    {
+                      'enterostomy': 'Limit granted',
+                      'hermaean': '₱200',
+                      'injective': 200,
+                      'provisos': 1,
+                    },
+                    {
+                      'enterostomy': 'Limit granted',
+                      'hermaean': '₱400',
+                      'injective': 400,
+                      'provisos': 1,
+                    },
+                    {
+                      'enterostomy': 'Verify to unlock',
+                      'hermaean': '₱800',
+                      'injective': 800,
+                      'provisos': 0,
+                    },
+                    {
+                      'enterostomy': 'Verify to unlock',
+                      'hermaean': '₱2000',
+                      'injective': 2000,
+                      'provisos': 0,
+                    },
+                  ],
                 },
               ],
             },
@@ -98,11 +124,12 @@ void main() {
                   'telfered': '120 days',
                   'finos': ['Fast approval', 'No collateral'],
                   'upscales': 42,
+                  'weldor': 'Get loan',
                 },
               ],
             },
             {
-              'sociologeses': 'PROCESS_LIST',
+              'sociologeses': 'Absorbabilities',
               'jambes': [
                 {
                   'titled': 'order-1',
@@ -158,6 +185,16 @@ void main() {
       expect(loan.loanTermRows, hasLength(3));
       expect(loan.loanTermRows.first.leftText, '2Period');
       expect(loan.loanTermRows.last.rightText, '≤ 0.3% / Day');
+      expect(loan.creditActivationItems, hasLength(4));
+      expect(loan.creditActivationItems.first.title, 'Limit granted');
+      expect(loan.creditActivationItems.first.amount, '₱200');
+      expect(loan.creditActivationItems.first.amountValue, 200);
+      expect(loan.creditActivationItems.first.isUnlocked, isTrue);
+      expect(loan.creditActivationItems[1].amount, '₱400');
+      expect(loan.creditActivationItems[1].isUnlocked, isTrue);
+      expect(loan.creditActivationItems.last.title, 'Verify to unlock');
+      expect(loan.creditActivationItems.last.amount, '₱2000');
+      expect(loan.creditActivationItems.last.isUnlocked, isFalse);
       expect(loan.buttonText, 'Apply now');
       expect(
         loan.loanProcessText,
@@ -174,6 +211,7 @@ void main() {
       expect(recommendation.loanTerm, '120 days');
       expect(recommendation.footer, 'Fast approval / No collateral');
       expect(recommendation.upscales, 42);
+      expect(recommendation.buttonText, 'Get loan');
 
       final progress = data.progressItems.single;
       expect(progress.orderNumber, 'order-1');
@@ -211,27 +249,60 @@ void main() {
       expect(data.loanOffer?.amount, '5000');
     });
 
-    test('shows Credit Activation Progress only for non-empty lyings', () {
-      for (final value in <dynamic>[
-        'identity',
-        <dynamic>['identity'],
-        <String, dynamic>{'step': 'identity'},
-        1,
-      ]) {
-        final data = HomeData.fromJson(Json({'lyings': value}));
-        expect(data.showCreditActivationProgress, isTrue, reason: '$value');
-      }
+    test('ignores top-level and malformed lyings values', () {
+      final data = HomeData.fromJson(
+        Json({
+          'lyings': [
+            {'enterostomy': 'wrong level'},
+          ],
+          'clingiest': [
+            {
+              'sociologeses': 'QuininaSpeculation',
+              'jambes': [
+                {
+                  'lyings': [null, 'invalid', <String, dynamic>{}],
+                },
+              ],
+            },
+          ],
+        }),
+      );
 
-      for (final value in <dynamic>[
-        null,
-        '',
-        '   ',
-        <dynamic>[],
-        <String, dynamic>{},
-      ]) {
-        final data = HomeData.fromJson(Json({'lyings': value}));
-        expect(data.showCreditActivationProgress, isFalse, reason: '$value');
-      }
+      expect(data.creditActivationItems, isEmpty);
+    });
+
+    test('preserves every valid credit activation item', () {
+      final data = HomeData.fromJson(
+        Json({
+          'clingiest': [
+            {
+              'sociologeses': 'QuininaSpeculation',
+              'jambes': [
+                {
+                  'lyings': [
+                    for (var index = 1; index <= 5; index++)
+                      {
+                        'enterostomy': 'Step $index',
+                        'hermaean': '₱$index',
+                        'injective': index,
+                        'provisos': index < 3 ? 1 : 0,
+                      },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      expect(data.creditActivationItems, hasLength(5));
+      expect(data.creditActivationItems.map((item) => item.title), [
+        'Step 1',
+        'Step 2',
+        'Step 3',
+        'Step 4',
+        'Step 5',
+      ]);
     });
 
     test('prioritizes the first LARGE_CARD over SMALL_CARD', () {
@@ -335,7 +406,7 @@ void main() {
           Json({
             'clingiest': [
               {
-                'sociologeses': 'PROCESS_LIST',
+                'sociologeses': 'Absorbabilities',
                 'jambes': [
                   null,
                   'not-a-map',
@@ -354,5 +425,23 @@ void main() {
         );
       },
     );
+
+    test('parses the obfuscated PROCESS_LIST module value', () {
+      final data = HomeData.fromJson(
+        Json({
+          'clingiest': [
+            {
+              'sociologeses': 'Absorbabilities',
+              'jambes': [
+                {'studdies': 'Server Cash', 'injective': 2000, 'emblemize': 2},
+              ],
+            },
+          ],
+        }),
+      );
+
+      expect(data.progressItems, hasLength(1));
+      expect(data.progressItems.single.productName, 'Server Cash');
+    });
   });
 }

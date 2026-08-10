@@ -59,22 +59,6 @@ class _RecommendationHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Text(
-            'More',
-            style: TextStyle(
-              color: AppColors.surface,
-              fontSize: ScreenAdapter.font(14),
-              fontWeight: FontWeight.w400,
-              height: 20 / 14,
-            ),
-          ),
-          SizedBox(width: ScreenAdapter.width(4)),
-          Image.asset(
-            AppAssets.chevronRight,
-            color: AppColors.surface,
-            width: ScreenAdapter.font(12),
-            height: ScreenAdapter.height(12),
-          ),
         ],
       ),
     );
@@ -93,9 +77,7 @@ class _RecommendationCard extends StatelessWidget {
       button: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: item.productId.trim().isEmpty || item.upscales == -1
-            ? null
-            : _handleTap,
+        onTap: _handleTap,
         child: AspectRatio(
           aspectRatio: 343 / 110,
           child: Container(
@@ -141,14 +123,21 @@ class _RecommendationCard extends StatelessWidget {
                     ),
                     decoration: _applyDecoration(item.upscales),
                     child: Center(
-                      child: Text(
-                        'Apply\nNow',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.surface,
-                          fontSize: ScreenAdapter.font(18),
-                          fontWeight: FontWeight.w700,
-                          height: 30 / 18,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: ScreenAdapter.width(14),
+                        ),
+                        child: Text(
+                          item.buttonText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.surface,
+                            fontSize: ScreenAdapter.font(18),
+                            fontWeight: FontWeight.w700,
+                            height: 30 / 18,
+                          ),
                         ),
                       ),
                     ),

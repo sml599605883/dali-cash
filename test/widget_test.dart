@@ -613,10 +613,12 @@ void main() {
     expect(find.byKey(const Key('account-actions-sheet')), findsNothing);
     expect(find.byKey(const Key('account-retention-dialog')), findsOneWidget);
     expect(find.byType(BackdropFilter), findsOneWidget);
-    expect(find.text('Keep Me In'), findsOneWidget);
+    expect(find.text("Don't Leave Your Cash Behind!"), findsOneWidget);
+    expect(find.text('Stay & Finish'), findsOneWidget);
+    expect(find.text('Log Out'), findsOneWidget);
     expect(
       find.text(
-        'Stay logged in to receive instant alerts on your limit and payments.',
+        'Your pre-approved credit is ready for instant withdrawal. Leaving now means you might lose this limited-time rate!',
       ),
       findsOneWidget,
     );
@@ -629,10 +631,12 @@ void main() {
 
     expect(find.byKey(const Key('account-actions-sheet')), findsNothing);
     expect(find.byKey(const Key('account-retention-dialog')), findsOneWidget);
-    expect(find.text('Keep Account'), findsOneWidget);
+    expect(find.text('We’re Sad to See You Go...'), findsOneWidget);
+    expect(find.text('I’ll Stay'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
     expect(
       find.text(
-        'Once deleted, all your credit history and limit disappear. Stay with us?',
+        'Once deleted, all your accumulated credit score, active offers, and history will be reset instantly. This action cannot be undone.',
       ),
       findsOneWidget,
     );
@@ -673,7 +677,7 @@ void main() {
     }
   });
 
-  testWidgets('logs Keep Me In and closes the logout retention dialog', (
+  testWidgets('logs Stay & Finish and closes the logout retention dialog', (
     tester,
   ) async {
     final originalDebugPrint = debugPrint;
@@ -687,14 +691,14 @@ void main() {
       await tester.tap(find.byKey(const Key('account-retention-keep')));
       await tester.pumpAndSettle();
 
-      expect(messages, <String>['[MinePage] Keep Me In tapped']);
+      expect(messages, <String>['[MinePage] Stay & Finish tapped']);
       expect(find.byKey(const Key('account-retention-dialog')), findsNothing);
     } finally {
       debugPrint = originalDebugPrint;
     }
   });
 
-  testWidgets('logs Keep Account and closes the deletion retention dialog', (
+  testWidgets('logs I’ll Stay and closes the deletion retention dialog', (
     tester,
   ) async {
     final originalDebugPrint = debugPrint;
@@ -708,49 +712,38 @@ void main() {
       await tester.tap(find.byKey(const Key('account-retention-keep')));
       await tester.pumpAndSettle();
 
-      expect(messages, <String>['[MinePage] Keep Account tapped']);
+      expect(messages, <String>['[MinePage] I’ll Stay tapped']);
       expect(find.byKey(const Key('account-retention-dialog')), findsNothing);
     } finally {
       debugPrint = originalDebugPrint;
     }
   });
 
-  testWidgets('logs Close Anyway and closes both retention dialogs', (
+  testWidgets('confirms and closes both retention dialogs', (
     tester,
   ) async {
-    final originalDebugPrint = debugPrint;
-    final messages = <String>[];
-    debugPrint = (message, {wrapWidth}) {
-      if (message != null) messages.add(message);
-    };
-    try {
-      for (final actionKey in <Key>[
-        const Key('account-action-log-out'),
-        const Key('account-action-delete'),
-      ]) {
-        await openRetentionDialog(tester, actionKey);
-        final client = Get.find<ApiClient>() as NoNetworkApiClient;
-        final previousLogoutCalls = client.logoutCalls;
-        final previousDeleteCalls = client.userDeleteCalls;
-        messages.clear();
-        await tester.tap(find.byKey(const Key('account-retention-close')));
-        await tester.pumpAndSettle();
+    for (final actionKey in <Key>[
+      const Key('account-action-log-out'),
+      const Key('account-action-delete'),
+    ]) {
+      await openRetentionDialog(tester, actionKey);
+      final client = Get.find<ApiClient>() as NoNetworkApiClient;
+      final previousLogoutCalls = client.logoutCalls;
+      final previousDeleteCalls = client.userDeleteCalls;
+      await tester.tap(find.byKey(const Key('account-retention-close')));
+      await tester.pumpAndSettle();
 
-        expect(messages, <String>['[MinePage] Close Anyway tapped']);
-        expect(find.byKey(const Key('account-retention-dialog')), findsNothing);
-        expect(find.byKey(const Key('tab-home-selected')), findsOneWidget);
-        expect(await client.config.sessionStore.sessionId(), isEmpty);
-        expect(await client.config.sessionStore.phone(), '9620001300');
-        if (actionKey == const Key('account-action-log-out')) {
-          expect(client.logoutCalls, previousLogoutCalls + 1);
-          expect(client.userDeleteCalls, previousDeleteCalls);
-        } else {
-          expect(client.logoutCalls, previousLogoutCalls);
-          expect(client.userDeleteCalls, previousDeleteCalls + 1);
-        }
+      expect(find.byKey(const Key('account-retention-dialog')), findsNothing);
+      expect(find.byKey(const Key('tab-home-selected')), findsOneWidget);
+      expect(await client.config.sessionStore.sessionId(), isEmpty);
+      expect(await client.config.sessionStore.phone(), '9620001300');
+      if (actionKey == const Key('account-action-log-out')) {
+        expect(client.logoutCalls, previousLogoutCalls + 1);
+        expect(client.userDeleteCalls, previousDeleteCalls);
+      } else {
+        expect(client.logoutCalls, previousLogoutCalls);
+        expect(client.userDeleteCalls, previousDeleteCalls + 1);
       }
-    } finally {
-      debugPrint = originalDebugPrint;
     }
   });
 

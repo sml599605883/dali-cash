@@ -28,6 +28,8 @@ class DaliWebViewActionCoordinator {
     this.requestAppReview,
     this.buildPublicParams,
     this.retryOrder,
+    this.reloadOrOpenWebView,
+    @Deprecated('Use reloadOrOpenWebView to reuse the current WebView.')
     this.replaceWebView,
     this.changeAccount,
     this.showLoading,
@@ -46,6 +48,8 @@ class DaliWebViewActionCoordinator {
   final DaliWebViewAsyncAction? requestAppReview;
   final DaliWebViewParamsBuilder? buildPublicParams;
   final DaliWebViewRetryAction? retryOrder;
+  final DaliWebViewUrlAction? reloadOrOpenWebView;
+  @Deprecated('Use reloadOrOpenWebView to reuse the current WebView.')
   final DaliWebViewUrlAction? replaceWebView;
   final DaliWebViewAccountAction? changeAccount;
   final DaliWebViewAsyncAction? showLoading;
@@ -140,15 +144,18 @@ class DaliWebViewActionCoordinator {
       return const DaliWebViewResult.failure('Missing orderNo');
     }
     await showLoading?.call();
-    final url = (await retryOrder?.call(orderNo) ?? '').trim();
-    if (url.isEmpty) {
-      const message = 'Missing retry result url';
-      await showError?.call(message);
-      return const DaliWebViewResult.failure(message);
+    try {
+      final url = (await retryOrder?.call(orderNo) ?? '').trim();
+      if (url.isEmpty) {
+        const message = 'Missing retry result url';
+        await showError?.call(message);
+        return const DaliWebViewResult.failure(message);
+      }
+      await (reloadOrOpenWebView ?? replaceWebView)?.call(url);
+      return const DaliWebViewResult.success();
+    } finally {
+      await dismissLoading?.call();
     }
-    await replaceWebView?.call(url);
-    await dismissLoading?.call();
-    return const DaliWebViewResult.success();
   }
 
   Future<DaliWebViewResult> _changeAccount(DaliWebViewRequest request) async {

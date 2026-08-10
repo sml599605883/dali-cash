@@ -226,9 +226,7 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
             .stringValue
             .trim();
       },
-      replaceWebView: (url) async {
-        NavigationHelper.replaceWebView<void>(url: url);
-      },
+      reloadOrOpenWebView: _reloadOrOpenWebView,
       changeAccount: ({required productId, required orderNo}) async {
         final response = await Get.find<ApiClient>().userAccountList(
           productId: productId,
@@ -373,6 +371,32 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
       _loading = true;
       _loadFailed = false;
     });
+    await controller.loadUrl(urlRequest: URLRequest(url: WebUri.uri(uri)));
+  }
+
+  Future<void> _reloadOrOpenWebView(String rawUrl) async {
+    final uri = NavigationHelper.webViewUri(rawUrl);
+    final controller = _controller;
+    if (uri == null ||
+        !canUseDaliWebViewController(
+          mounted: mounted,
+          activeController: _controller,
+          controller: controller,
+        )) {
+      return;
+    }
+    final currentUri = await controller!.getUrl();
+    if (!canUseDaliWebViewController(
+      mounted: mounted,
+      activeController: _controller,
+      controller: controller,
+    )) {
+      return;
+    }
+    if (currentUri?.toString().trim() == uri.toString()) {
+      await controller.reload();
+      return;
+    }
     await controller.loadUrl(urlRequest: URLRequest(url: WebUri.uri(uri)));
   }
 

@@ -48,6 +48,7 @@ void main() {
     expect(find.text('365 Days'), findsOneWidget);
     expect(find.text('1.25% Day'), findsNWidgets(2));
     expect(find.text('Continue'), findsOneWidget);
+    expect(find.text('Server Apply'), findsOneWidget);
     expect(find.byType(HomeHeader), findsOneWidget);
     expect(find.byType(LoanOfferCard), findsOneWidget);
     expect(find.byType(PromoBanner), findsOneWidget);
@@ -153,10 +154,9 @@ void main() {
   ) async {
     final controller = _registerController();
     controller.homeData.value = HomeData(
-      loanOffer: _deliveredHomeData().loanOffer,
+      loanOffer: _loanOfferWithCreditActivation(),
       banners: const <HomeBannerData>[],
       recommendations: const <HomeRecommendationData>[],
-      showCreditActivationProgress: true,
     );
 
     await _pumpShell(tester);
@@ -171,14 +171,59 @@ void main() {
     expect(progressRect.top - loanRect.bottom, 16);
     expect(progressRect.size, const Size(343, 140));
     expect(find.text('Credit Activation Progress'), findsOneWidget);
-    expect(find.text('Identity'), findsOneWidget);
-    expect(find.text('Living'), findsOneWidget);
-    expect(find.text('Basic information'), findsOneWidget);
-    expect(find.text('Bank Card'), findsOneWidget);
-    expect(find.text('₱ 30,000'), findsOneWidget);
-    expect(find.text('₱ 40,000'), findsOneWidget);
-    expect(find.text('₱ 50,000'), findsOneWidget);
-    expect(find.text('₱ 60,000'), findsOneWidget);
+    expect(find.text('Limit granted'), findsNWidgets(2));
+    expect(find.text('Verify to unlock'), findsNWidgets(2));
+    expect(find.text('₱200'), findsOneWidget);
+    expect(find.text('₱400'), findsOneWidget);
+    expect(find.text('₱800'), findsOneWidget);
+    expect(find.text('₱2000'), findsOneWidget);
+    expect(
+      find.byKey(const Key('home-credit-activation-step-active-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('home-credit-activation-step-active-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('home-credit-activation-step-inactive-2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('home-credit-activation-step-inactive-3')),
+      findsOneWidget,
+    );
+    final firstStepRect = tester.getRect(
+      find.byKey(const Key('home-credit-activation-step-active-0')),
+    );
+    final secondStepRect = tester.getRect(
+      find.byKey(const Key('home-credit-activation-step-active-1')),
+    );
+    final lastStepRect = tester.getRect(
+      find.byKey(const Key('home-credit-activation-step-inactive-3')),
+    );
+    final firstArrowRect = tester.getRect(
+      find.byKey(const Key('home-credit-activation-arrow-active-0')),
+    );
+    final trackRect = tester.getRect(
+      find.byKey(const Key('home-credit-activation-track')),
+    );
+    final firstAmountRect = tester.getRect(find.text('₱200'));
+    expect(
+      firstArrowRect.center.dx,
+      moreOrLessEquals(
+        (firstStepRect.center.dx + secondStepRect.center.dx) / 2,
+      ),
+    );
+    expect(firstStepRect.left - progressRect.left, 24);
+    expect(progressRect.right - lastStepRect.right, 24);
+    expect(
+      tester.getRect(find.text('Credit Activation Progress')).center.dx,
+      progressRect.center.dx,
+    );
+    expect(trackRect.top, greaterThan(firstStepRect.bottom));
+    expect(trackRect.width, 295);
+    expect(firstAmountRect.top, greaterThan(trackRect.bottom));
   });
 
   testWidgets('hides Credit Activation Progress when lyings is empty', (
@@ -372,6 +417,32 @@ void main() {
     await tester.pump();
     expect(appliedProductIds, ['product-1']);
   });
+
+  testWidgets(
+    'recommendation cards remain clickable for every upscales state',
+    (tester) async {
+      final sessionStore = SessionStore.memory();
+      await sessionStore.saveSessionId('session-id');
+      final appliedProductIds = <String>[];
+      final controller = _registerController(
+        sessionStore: sessionStore,
+        onAuthenticatedProductApply: (productId) async {
+          appliedProductIds.add(productId);
+        },
+      );
+      controller.homeData.value = HomeData(
+        loanOffer: null,
+        banners: const <HomeBannerData>[],
+        recommendations: [_recommendation(upscales: -1)],
+      );
+
+      await _pumpShell(tester);
+      await tester.tap(find.byKey(const Key('home-recommendation-card--1')));
+      await tester.pump();
+
+      expect(appliedProductIds, ['product--1']);
+    },
+  );
 
   testWidgets('root app installs GetMaterialApp runtime', (tester) async {
     await tester.pumpWidget(DaliCashApp(initialBinding: testMainBinding()));
@@ -818,6 +889,7 @@ HomeData _deliveredHomeData() {
         loanTerm: '30 Days',
         footer: 'Server footer',
         upscales: -1,
+        buttonText: 'Server Apply',
       ),
     ],
     progressItems: const <ProgressItem>[
@@ -842,6 +914,50 @@ HomeData _deliveredHomeData() {
         ],
       ),
     ],
+  );
+}
+
+HomeLoanOfferData _loanOfferWithCreditActivation() {
+  final offer = _deliveredHomeData().loanOffer!;
+  return HomeLoanOfferData(
+    productId: offer.productId,
+    productName: offer.productName,
+    productLogo: offer.productLogo,
+    amount: offer.amount,
+    amountCaption: offer.amountCaption,
+    loanTerm: offer.loanTerm,
+    loanTermCaption: offer.loanTermCaption,
+    interestRate: offer.interestRate,
+    interestRateCaption: offer.interestRateCaption,
+    loanTermRows: offer.loanTermRows,
+    creditActivationItems: const <HomeCreditActivationItem>[
+      HomeCreditActivationItem(
+        title: 'Limit granted',
+        amount: '₱200',
+        amountValue: 200,
+        isUnlocked: true,
+      ),
+      HomeCreditActivationItem(
+        title: 'Limit granted',
+        amount: '₱400',
+        amountValue: 400,
+        isUnlocked: true,
+      ),
+      HomeCreditActivationItem(
+        title: 'Verify to unlock',
+        amount: '₱800',
+        amountValue: 800,
+        isUnlocked: false,
+      ),
+      HomeCreditActivationItem(
+        title: 'Verify to unlock',
+        amount: '₱2000',
+        amountValue: 2000,
+        isUnlocked: false,
+      ),
+    ],
+    buttonText: offer.buttonText,
+    loanProcessText: offer.loanProcessText,
   );
 }
 

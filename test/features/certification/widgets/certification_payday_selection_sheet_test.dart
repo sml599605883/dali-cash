@@ -4,9 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('selects a child and returns the parent-child display value', (
-    tester,
-  ) async {
+  testWidgets('selects a child and returns its enum value', (tester) async {
     CertificationPaydaySelection? result;
     await _pumpLauncher(tester, onResult: (value) => result = value);
 
@@ -36,7 +34,7 @@ void main() {
     await tester.tap(find.byKey(const Key('certificationPaydayDone')));
     await tester.pumpAndSettle();
     expect(result?.displayText, 'Once a Month|1');
-    expect(result?.submitValue, 'Once a Month|1');
+    expect(result?.submitValue, '11');
     expect(find.byKey(const Key('certificationPaydaySheet')), findsNothing);
   });
 

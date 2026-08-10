@@ -175,6 +175,36 @@ void main() {
 
     expect(editableText.focusNode.hasPrimaryFocus, isFalse);
   });
+
+  testWidgets('blocks system back after identity recognition succeeds', (
+    tester,
+  ) async {
+    addTearDown(Get.reset);
+    await tester.pumpWidget(
+      GetMaterialApp(
+        initialRoute: '/',
+        getPages: [
+          GetPage<void>(name: '/', page: () => const SizedBox()),
+          GetPage<void>(
+            name: '/identity-confirmation',
+            page: () => IdentityConfirmationPage(
+              recognizedInfo: IdentityRecognitionResult.fromMap({}),
+            ),
+          ),
+        ],
+      ),
+    );
+    Get.toNamed<void>('/identity-confirmation');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IdentityConfirmationPage), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IdentityConfirmationPage), findsOneWidget);
+    expect(Get.currentRoute, '/identity-confirmation');
+  });
 }
 
 class _IdentitySubmitApiClient extends ApiClient {
