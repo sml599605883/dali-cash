@@ -7,55 +7,60 @@ import 'package:dali_cash/features/home/home_data.dart';
 import 'package:flutter/material.dart';
 
 class CreditActivationProgress extends StatelessWidget {
-  const CreditActivationProgress({super.key, required this.items});
+  const CreditActivationProgress({super.key, required this.items, this.onTap});
 
   final List<HomeCreditActivationItem> items;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const Key('home-credit-activation-progress'),
-      width: ScreenAdapter.width(343),
-      height: ScreenAdapter.height(140),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(ScreenAdapter.width(12)),
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment(0.61, 1),
-          colors: [
-            AppColors.activationProgressGradientStart,
-            AppColors.activationProgressGradientEnd,
-          ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        key: const Key('home-credit-activation-progress'),
+        width: double.infinity,
+        height: ScreenAdapter.height(140),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(ScreenAdapter.width(12)),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment(0.61, 1),
+            colors: [
+              AppColors.activationProgressGradientStart,
+              AppColors.activationProgressGradientEnd,
+            ],
+          ),
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: ScreenAdapter.height(10),
-            left: 0,
-            right: 0,
-            child: Text(
-              'Credit Activation Progress',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.surface,
-                fontSize: ScreenAdapter.font(16),
-                height: 1,
+        child: Stack(
+          children: [
+            Positioned(
+              top: ScreenAdapter.height(10),
+              left: 0,
+              right: 0,
+              child: Text(
+                'Credit Activation Progress',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.surface,
+                  fontSize: ScreenAdapter.font(16),
+                  height: 1,
+                ),
               ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: ScreenAdapter.height(36),
-            bottom: 0,
-            child: ColoredBox(
-              color: AppColors.surface,
-              child: _ProgressContent(items: items),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: ScreenAdapter.height(36),
+              bottom: 0,
+              child: ColoredBox(
+                color: AppColors.surface,
+                child: _ProgressContent(items: items),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -68,51 +73,54 @@ class _ProgressContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tileWidth = ScreenAdapter.width(46);
-    final arrowWidth = ScreenAdapter.width(18);
-    final sidePadding = ScreenAdapter.width(24);
-    final minimumWidth = ScreenAdapter.width(295);
-    final contentWidth = math.max(
-      minimumWidth,
-      tileWidth * items.length + arrowWidth * math.max(0, items.length - 1),
-    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sidePadding = ScreenAdapter.width(24);
+        final contentWidth = math.max(
+          0.0,
+          constraints.maxWidth - sidePadding * 2,
+        );
+        final minimumGap = ScreenAdapter.width(4);
+        final itemCount = math.max(1, items.length);
+        final tileWidth = math.min(
+          ScreenAdapter.width(46),
+          (contentWidth - minimumGap * math.max(0, itemCount - 1)) / itemCount,
+        );
 
-    return SingleChildScrollView(
-      key: const Key('home-credit-activation-scroll'),
-      scrollDirection: Axis.horizontal,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: sidePadding),
-        child: SizedBox(
-          width: contentWidth,
-          height: ScreenAdapter.height(104),
-          child: Column(
-            children: [
-              SizedBox(height: ScreenAdapter.height(12)),
-              SizedBox(
-                height: ScreenAdapter.height(47),
-                child: _stepRow(contentWidth, tileWidth),
-              ),
-              SizedBox(height: ScreenAdapter.height(10)),
-              SizedBox(
-                width: contentWidth,
-                height: ScreenAdapter.height(8),
-                child: CustomPaint(
-                  key: const Key('home-credit-activation-track'),
-                  painter: _ProgressTrackPainter(
-                    count: items.length,
-                    active: items.map((item) => item.isUnlocked).toList(),
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: sidePadding),
+          child: SizedBox(
+            width: contentWidth,
+            height: ScreenAdapter.height(104),
+            child: Column(
+              children: [
+                SizedBox(height: ScreenAdapter.height(12)),
+                SizedBox(
+                  height: ScreenAdapter.height(47),
+                  child: _stepRow(contentWidth, tileWidth),
+                ),
+                SizedBox(height: ScreenAdapter.height(10)),
+                SizedBox(
+                  width: contentWidth,
+                  height: ScreenAdapter.height(8),
+                  child: CustomPaint(
+                    key: const Key('home-credit-activation-track'),
+                    painter: _ProgressTrackPainter(
+                      count: items.length,
+                      active: items.map((item) => item.isUnlocked).toList(),
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: ScreenAdapter.height(5)),
-              SizedBox(
-                height: ScreenAdapter.height(12),
-                child: _amountRow(contentWidth, tileWidth),
-              ),
-            ],
+                SizedBox(height: ScreenAdapter.height(5)),
+                SizedBox(
+                  height: ScreenAdapter.height(12),
+                  child: _amountRow(contentWidth, tileWidth),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -124,6 +132,7 @@ class _ProgressContent extends StatelessWidget {
           index: 0,
           label: item.title,
           isActive: item.isUnlocked,
+          width: tileWidth,
         ),
       );
     }
@@ -136,6 +145,7 @@ class _ProgressContent extends StatelessWidget {
             index: index,
             label: items[index].title,
             isActive: items[index].isUnlocked,
+            width: tileWidth,
           ),
           if (index < items.length - 1)
             SizedBox(
@@ -148,8 +158,8 @@ class _ProgressContent extends StatelessWidget {
                   items[index].isUnlocked
                       ? AppAssets.activationProgressArrowActive
                       : AppAssets.activationProgressArrowInactive,
-                  width: ScreenAdapter.width(18),
-                  height: ScreenAdapter.height(18),
+                  width: math.min(ScreenAdapter.width(18), gapWidth),
+                  height: math.min(ScreenAdapter.height(18), gapWidth),
                 ),
               ),
             ),
@@ -244,11 +254,13 @@ class _ProgressStep extends StatelessWidget {
     required this.index,
     required this.label,
     required this.isActive,
+    required this.width,
   });
 
   final int index;
   final String label;
   final bool isActive;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +268,7 @@ class _ProgressStep extends StatelessWidget {
       key: Key(
         'home-credit-activation-step-${isActive ? 'active' : 'inactive'}-$index',
       ),
-      width: ScreenAdapter.width(46),
+      width: width,
       height: ScreenAdapter.height(47),
       padding: EdgeInsets.only(bottom: ScreenAdapter.height(4)),
       decoration: BoxDecoration(
@@ -269,8 +281,8 @@ class _ProgressStep extends StatelessWidget {
         children: [
           Image.asset(
             AppAssets.activationProgressCoin,
-            width: ScreenAdapter.width(23),
-            height: ScreenAdapter.height(23),
+            width: math.min(ScreenAdapter.width(23), width),
+            height: math.min(ScreenAdapter.height(23), width),
           ),
           Expanded(
             child: Center(

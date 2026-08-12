@@ -22,6 +22,21 @@ void main() {
     expect(target.productId, '7');
   });
 
+  test('reads the documented order status field from scheme and arguments', () {
+    expect(
+      parser
+          .parse('ph://dali-cash/ios/Luminance?anfractuosity=7')
+          .orderStatusCode,
+      '7',
+    );
+    expect(
+      parser
+          .parse('Luminance', arguments: {'anfractuosity': 6})
+          .orderStatusCode,
+      '6',
+    );
+  });
+
   test('maps the documented Dali navigation aliases', () {
     expect(
       parser.parse('ph://dali-cash/ios/Personation').kind,
@@ -34,6 +49,14 @@ void main() {
     expect(
       parser.parse('ph://dali-cash/ios/TortoiseBerkelium').kind,
       DaliDeepLinkKind.login,
+    );
+    expect(
+      parser.parse('ph://dali-cash/ios/Luminance').kind,
+      DaliDeepLinkKind.order,
+    );
+    expect(
+      parser.parse('ph://dali-cash/ios/Mateys?highlands=2').kind,
+      DaliDeepLinkKind.admission,
     );
     expect(
       parser.parse('ph://dali-cash/ios/Heed?highlands=2').kind,

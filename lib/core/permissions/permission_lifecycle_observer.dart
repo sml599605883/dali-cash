@@ -13,14 +13,13 @@ class PermissionLifecycleObserver extends WidgetsBindingObserver {
     required PermissionRequest requestResumeTrackingPermission,
     PermissionRequest? reportAppStarted,
     PermissionRequest? reportAppResumed,
-    PermissionRequest? reportTrackingDecision,
-    PermissionRequest? reportPushToken,
+    PermissionRequest? reportStartupPermissionsResolved,
   }) : _requestStartupPermissions = requestStartupPermissions,
        _requestResumeTrackingPermission = requestResumeTrackingPermission,
        _reportAppStarted = reportAppStarted ?? _noop,
        _reportAppResumed = reportAppResumed ?? _noop,
-       _reportTrackingDecision = reportTrackingDecision ?? _noop,
-       _reportPushToken = reportPushToken ?? _noop;
+       _reportStartupPermissionsResolved =
+           reportStartupPermissionsResolved ?? _noop;
 
   static final PermissionLifecycleObserver instance =
       PermissionLifecycleObserver(
@@ -30,16 +29,14 @@ class PermissionLifecycleObserver extends WidgetsBindingObserver {
             PermissionCoordinator.instance.requestResumeTrackingPermission,
         reportAppStarted: _reportStarted,
         reportAppResumed: _reportResumed,
-        reportTrackingDecision: _reportCurrentTrackingDecision,
-        reportPushToken: _reportStartedPushToken,
+        reportStartupPermissionsResolved: _completeStartupReporting,
       );
 
   final PermissionRequest _requestStartupPermissions;
   final PermissionRequest _requestResumeTrackingPermission;
   final PermissionRequest _reportAppStarted;
   final PermissionRequest _reportAppResumed;
-  final PermissionRequest _reportTrackingDecision;
-  final PermissionRequest _reportPushToken;
+  final PermissionRequest _reportStartupPermissionsResolved;
 
   bool _started = false;
 
@@ -49,23 +46,22 @@ class PermissionLifecycleObserver extends WidgetsBindingObserver {
     }
     _started = true;
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_requestStartupPermissionsAndReportPushToken());
-    unawaited(_reportAppStarted());
+    unawaited(_runStartup());
   }
 
-  Future<void> _requestStartupPermissionsAndReportPushToken() async {
+  Future<void> _runStartup() async {
+    try {
+      await _reportAppStarted();
+    } catch (_) {
+      // Reporting setup failures must not prevent permission requests.
+    }
     try {
       await _requestStartupPermissions();
     } catch (_) {
-      // Permission failures must not prevent the push report attempt.
+      // Permission failures must not prevent startup report completion.
     }
     try {
-      await _reportTrackingDecision();
-    } catch (_) {
-      // Tracking reports must not prevent the push report attempt.
-    }
-    try {
-      await _reportPushToken();
+      await _reportStartupPermissionsResolved();
     } catch (_) {
       // Reporting failures must not interrupt application lifecycle handling.
     }
@@ -90,10 +86,6 @@ Future<void> _reportResumed() async {
   await DaliReportService.current?.resumed();
 }
 
-Future<void> _reportCurrentTrackingDecision() async {
-  await DaliReportService.current?.reportGoogleMarket();
-}
-
-Future<void> _reportStartedPushToken() async {
-  await DaliReportService.current?.reportAppleToken();
+Future<void> _completeStartupReporting() async {
+  await DaliReportService.current?.startupPermissionsResolved();
 }

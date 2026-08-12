@@ -45,7 +45,11 @@ class DaliProductNavigationFlow {
   final DaliLogger logger;
   final DaliProductRedirectReporter reportProductRedirect;
 
-  Future<void> apply(String productId, {String source = '0'}) async {
+  Future<void> apply(
+    String productId, {
+    String source = '0',
+    bool checkLocationAccess = true,
+  }) async {
     final normalizedProductId = productId.trim();
     if (normalizedProductId.isEmpty) {
       return;
@@ -62,7 +66,7 @@ class DaliProductNavigationFlow {
       return;
     }
 
-    if (!await ensureLocationAccess()) {
+    if (checkLocationAccess && !await ensureLocationAccess()) {
       return;
     }
 

@@ -9,13 +9,12 @@ class DaliReportStore {
     : _preferences = preferences ?? SharedPreferencesAsync(),
       _memory = null;
 
-  DaliReportStore.memory()
-    : _preferences = null,
-      _memory = <String, Object?>{};
+  DaliReportStore.memory() : _preferences = null, _memory = <String, Object?>{};
 
   static const _loginAtKey = 'report.login_at';
   static const _locationKey = 'report.location';
   static const _adjustInitializedKey = 'report.attribution_initialized';
+  static const _hasOpenedKey = 'report.has_opened';
 
   final SharedPreferencesAsync? _preferences;
   final Map<String, Object?>? _memory;
@@ -26,8 +25,13 @@ class DaliReportStore {
 
   Future<bool> isAdjustInitialized() => _bool(_adjustInitializedKey);
 
-  Future<void> markAdjustInitialized() =>
-      _setBool(_adjustInitializedKey, true);
+  Future<void> markAdjustInitialized() => _setBool(_adjustInitializedKey, true);
+
+  Future<bool> markAppOpened() async {
+    final isFirstLaunch = !await _bool(_hasOpenedKey);
+    await _setBool(_hasOpenedKey, true);
+    return isFirstLaunch;
+  }
 
   Future<void> saveLocation(DaliLocationSnapshot location) {
     return _setString(_locationKey, jsonEncode(location.toMap()));

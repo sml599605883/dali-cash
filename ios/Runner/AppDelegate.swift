@@ -15,7 +15,6 @@ import UserNotifications
     if let payload = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
       ClientBridgeRegistrar.shared.acceptNotificationPayload(payload)
     }
-    application.registerForRemoteNotifications()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

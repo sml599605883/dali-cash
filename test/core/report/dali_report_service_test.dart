@@ -133,26 +133,63 @@ void main() {
     },
   );
 
-  test('permission completion reports once and closes event waiting', () async {
-    trackingStatus = 'not_determined';
-    await service.start();
-    expect(api.marketCalls, 0);
+  test(
+    'first-launch permission completion reports Google and push once',
+    () async {
+      trackingStatus = 'not_determined';
+      await service.start();
+      expect(api.marketCalls, 0);
 
-    trackingStatus = 'denied';
-    await service.reportGoogleMarket();
-    expect(api.marketCalls, 1);
+      trackingStatus = 'denied';
+      await service.startupPermissionsResolved();
+      await service.startupPermissionsResolved();
+      expect(api.marketCalls, 1);
+      expect(api.pushCalls, 1);
 
-    events.add(
-      Json(const <String, dynamic>{
-        'type': 'tracking_status_changed',
-        'status': 'authorized',
-      }),
-    );
-    await Future<void>.delayed(Duration.zero);
-    expect(api.marketCalls, 1);
-  });
+      events.add(
+        Json(const <String, dynamic>{
+          'type': 'tracking_status_changed',
+          'status': 'authorized',
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(api.marketCalls, 1);
+    },
+  );
+
+  test(
+    'later app launch reports Google once before permissions complete',
+    () async {
+      await service.store.markAppOpened();
+
+      await service.start();
+      await Future<void>.delayed(Duration.zero);
+      expect(api.marketCalls, 1);
+
+      await service.startupPermissionsResolved();
+      expect(api.marketCalls, 1);
+      expect(api.pushCalls, 1);
+    },
+  );
+
+  test(
+    'later launch waits when tracking was not resolved previously',
+    () async {
+      await service.store.markAppOpened();
+      trackingStatus = 'not_determined';
+
+      await service.start();
+      await Future<void>.delayed(Duration.zero);
+      expect(api.marketCalls, 0);
+
+      trackingStatus = 'denied';
+      await service.startupPermissionsResolved();
+      expect(api.marketCalls, 1);
+    },
+  );
 
   test('resume does not trigger another Google Market report', () async {
+    await service.store.markAppOpened();
     await service.start();
     await Future<void>.delayed(Duration.zero);
     expect(api.marketCalls, 1);
@@ -173,8 +210,22 @@ void main() {
     await service.start();
     events.add(Json(const <String, dynamic>{'type': 'push_token'}));
     await Future<void>.delayed(Duration.zero);
+    await service.startupPermissionsResolved();
 
     expect(api.pushCalls, 1);
+  });
+
+  test('real push token updates an earlier empty startup report', () async {
+    pushToken = '';
+    await service.start();
+    await service.startupPermissionsResolved();
+    expect(api.pushTokens, ['']);
+
+    pushToken = 'push-token';
+    events.add(Json(const <String, dynamic>{'type': 'push_token'}));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(api.pushTokens, ['', 'push-token']);
   });
 
   test('empty push token is still reported after permission denial', () async {

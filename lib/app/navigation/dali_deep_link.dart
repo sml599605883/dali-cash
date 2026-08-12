@@ -2,7 +2,9 @@ enum DaliDeepLinkKind {
   home,
   mine,
   login,
+  order,
   productDetail,
+  admission,
   recredit,
   unavailable,
   webView,
@@ -30,6 +32,18 @@ class DaliDeepLink {
     }
     if (arguments is Map) {
       final value = (arguments as Map)['highlands'];
+      return value?.toString().trim() ?? '';
+    }
+    return '';
+  }
+
+  String get orderStatusCode {
+    final fromQuery = uri?.queryParameters['anfractuosity']?.trim() ?? '';
+    if (fromQuery.isNotEmpty) {
+      return fromQuery;
+    }
+    if (arguments is Map) {
+      final value = (arguments as Map)['anfractuosity'];
       return value?.toString().trim() ?? '';
     }
     return '';
@@ -120,12 +134,10 @@ class DaliDeepLinkParser {
       'main' || 'Personation' => DaliDeepLinkKind.home,
       'setting' || 'VeinedYachting' => DaliDeepLinkKind.mine,
       '/login' || 'login' || 'TortoiseBerkelium' => DaliDeepLinkKind.login,
+      'order' || 'Luminance' => DaliDeepLinkKind.order,
       'productDetail' || 'Conifer' => DaliDeepLinkKind.productDetail,
+      'apiRemindUrl' || 'Mateys' => DaliDeepLinkKind.admission,
       'recredit' || 'Heed' => DaliDeepLinkKind.recredit,
-      'order' ||
-      'Luminance' ||
-      'apiRemindUrl' ||
-      'Mateys' => DaliDeepLinkKind.unavailable,
       _ => null,
     };
   }

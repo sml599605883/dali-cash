@@ -24,6 +24,10 @@ void main() {
     expect(content, contains('willPresent notification'));
     expect(content, contains('didReceive response'));
     expect(content, contains('acceptNotificationPayload'));
+    expect(
+      content,
+      isNot(contains('application.registerForRemoteNotifications()')),
+    );
   });
 
   test('native bridge queues routes and supports nested params payloads', () {

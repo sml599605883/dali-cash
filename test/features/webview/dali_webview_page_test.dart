@@ -5,6 +5,7 @@ import 'package:dali_cash/core/json/json.dart';
 import 'package:dali_cash/features/webview/dali_webview_contract.dart';
 import 'package:dali_cash/features/webview/dali_webview_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -18,6 +19,71 @@ void main() {
   test('closes the Flutter route only without WebView history', () {
     expect(shouldCloseDaliWebView(canGoBack: true), isFalse);
     expect(shouldCloseDaliWebView(canGoBack: false), isTrue);
+  });
+
+  test('disables the WebView context menu only on iOS', () {
+    expect(shouldDisableDaliWebViewContextMenu(TargetPlatform.iOS), isTrue);
+    expect(
+      shouldDisableDaliWebViewContextMenu(TargetPlatform.android),
+      isFalse,
+    );
+  });
+
+  test(
+    'prevents only iOS image long presses before document content loads',
+    () {
+      final scripts = daliWebViewInitialUserScripts(TargetPlatform.iOS);
+
+      expect(scripts, hasLength(1));
+      expect(
+        scripts!.single.injectionTime,
+        UserScriptInjectionTime.AT_DOCUMENT_START,
+      );
+      expect(scripts.single.forMainFrameOnly, isFalse);
+      expect(scripts.single.source, contains('-webkit-touch-callout: none'));
+      expect(scripts.single.source, contains("target.closest('img')"));
+      expect(daliWebViewInitialUserScripts(TargetPlatform.android), isNull);
+    },
+  );
+
+  test('uses page history for same-document hash routes', () {
+    expect(
+      DaliWebViewBackHistory.shouldUsePageHistoryGo(
+        WebHistory(
+          currentIndex: 2,
+          list: <WebHistoryItem>[
+            WebHistoryItem(
+              index: 0,
+              url: WebUri('https://h5.example/Operate?skoals=1'),
+            ),
+            WebHistoryItem(
+              index: 1,
+              url: WebUri('https://h5.example/#/A?skoals=1'),
+            ),
+            WebHistoryItem(
+              index: 2,
+              url: WebUri('https://h5.example/#/B?skoals=1'),
+            ),
+          ],
+        ),
+      ),
+      isTrue,
+    );
+  });
+
+  test('uses native history for cross-document routes', () {
+    expect(
+      DaliWebViewBackHistory.shouldUsePageHistoryGo(
+        WebHistory(
+          currentIndex: 1,
+          list: <WebHistoryItem>[
+            WebHistoryItem(index: 0, url: WebUri('https://h5.example/A')),
+            WebHistoryItem(index: 1, url: WebUri('https://h5.example/B')),
+          ],
+        ),
+      ),
+      isFalse,
+    );
   });
 
   test('recognizes only Florescences confirm URLs and Dali product field', () {

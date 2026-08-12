@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -23,6 +24,87 @@ bool isInlineDaliWebViewScheme(String scheme) => switch (scheme.toLowerCase()) {
 };
 
 bool shouldCloseDaliWebView({required bool canGoBack}) => !canGoBack;
+
+bool shouldDisableDaliWebViewContextMenu(TargetPlatform platform) =>
+    platform == TargetPlatform.iOS;
+
+const String daliIosImageLongPressPreventionScript = r'''
+(() => {
+  const style = document.createElement('style');
+  style.textContent = `
+    img {
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
+  `;
+  (document.head || document.documentElement).appendChild(style);
+
+  document.addEventListener('contextmenu', (event) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest('img')) {
+      event.preventDefault();
+    }
+  }, true);
+})();
+''';
+
+UnmodifiableListView<UserScript>? daliWebViewInitialUserScripts(
+  TargetPlatform platform,
+) {
+  if (platform != TargetPlatform.iOS) return null;
+  return UnmodifiableListView<UserScript>([
+    UserScript(
+      source: daliIosImageLongPressPreventionScript,
+      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+      forMainFrameOnly: false,
+    ),
+  ]);
+}
+
+class DaliWebViewBackHistory {
+  DaliWebViewBackHistory._();
+
+  static bool shouldUsePageHistoryGo(WebHistory? history) {
+    final currentItem = _currentItem(history);
+    final previousItem = _previousItem(history);
+    if (currentItem == null || previousItem == null) {
+      return false;
+    }
+    final currentUri = Uri.tryParse(currentItem.url?.toString() ?? '');
+    final previousUri = Uri.tryParse(previousItem.url?.toString() ?? '');
+    if (currentUri == null || previousUri == null) {
+      return false;
+    }
+    return currentUri.fragment.isNotEmpty &&
+        previousUri.fragment.isNotEmpty &&
+        currentUri.removeFragment() == previousUri.removeFragment();
+  }
+
+  static WebHistoryItem? _currentItem(WebHistory? history) {
+    final currentIndex = history?.currentIndex;
+    final items = history?.list;
+    if (currentIndex == null ||
+        items == null ||
+        currentIndex < 0 ||
+        currentIndex >= items.length) {
+      return null;
+    }
+    return items[currentIndex];
+  }
+
+  static WebHistoryItem? _previousItem(WebHistory? history) {
+    final currentIndex = history?.currentIndex;
+    final items = history?.list;
+    if (currentIndex == null ||
+        items == null ||
+        currentIndex <= 0 ||
+        currentIndex >= items.length) {
+      return null;
+    }
+    return items[currentIndex - 1];
+  }
+}
 
 bool shouldShowDaliWebViewLoadError({required bool? isForMainFrame}) =>
     isForMainFrame == true;
@@ -340,10 +422,33 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
     required bool canGoBack,
   }) async {
     if (!shouldCloseDaliWebView(canGoBack: canGoBack) && controller != null) {
-      await controller.goBack();
+      await _goBackOneHistoryEntry(controller);
       return;
     }
     if (mounted) NavigationHelper.back<void>();
+  }
+
+  Future<void> _goBackOneHistoryEntry(InAppWebViewController controller) async {
+    if (!canUseDaliWebViewController(
+      mounted: mounted,
+      activeController: _controller,
+      controller: controller,
+    )) {
+      return;
+    }
+    final history = await controller.getCopyBackForwardList();
+    if (!canUseDaliWebViewController(
+      mounted: mounted,
+      activeController: _controller,
+      controller: controller,
+    )) {
+      return;
+    }
+    if (DaliWebViewBackHistory.shouldUsePageHistoryGo(history)) {
+      await controller.evaluateJavascript(source: 'window.history.go(-1);');
+      return;
+    }
+    await controller.goBack();
   }
 
   Future<NavigationActionPolicy> _handleNavigation(
@@ -428,11 +533,20 @@ class _DaliWebViewPageState extends State<DaliWebViewPage>
                 children: [
                   InAppWebView(
                     initialUrlRequest: URLRequest(url: WebUri.uri(uri)),
+                    initialUserScripts: daliWebViewInitialUserScripts(
+                      defaultTargetPlatform,
+                    ),
                     initialSettings: InAppWebViewSettings(
                       javaScriptEnabled: true,
                       useShouldOverrideUrlLoading: true,
                       useHybridComposition: true,
                       isInspectable: kDebugMode,
+                      disableContextMenu: shouldDisableDaliWebViewContextMenu(
+                        defaultTargetPlatform,
+                      ),
+                      allowsLinkPreview: !shouldDisableDaliWebViewContextMenu(
+                        defaultTargetPlatform,
+                      ),
                       mixedContentMode:
                           MixedContentMode.MIXED_CONTENT_NEVER_ALLOW,
                     ),

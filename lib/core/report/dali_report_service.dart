@@ -41,7 +41,10 @@ class DaliReportService {
   bool _starting = false;
   bool _marketReporting = false;
   bool _waitingForTrackingDecision = false;
+  bool _startupGoogleReportTriggered = false;
   bool _adjustInitializing = false;
+  final Set<String> _reportingAppleTokens = <String>{};
+  final Set<String> _reportedAppleTokens = <String>{};
   Future<DaliLocationSnapshot?>? _pendingLocation;
   StreamSubscription<Json>? _eventSubscription;
 
@@ -50,16 +53,11 @@ class DaliReportService {
     _starting = true;
     try {
       await store.clearSessionReportState();
+      final isFirstLaunch = await store.markAppOpened();
       _listenToNativeEvents();
-      _waitingForTrackingDecision = true;
-      final trackingStatus = await client.config.clientBridge
-          .getTrackingStatus();
-      if (_isResolvedTrackingStatus(trackingStatus) &&
-          _waitingForTrackingDecision) {
-        _waitingForTrackingDecision = false;
-        unawaited(_reportResolvedGoogleMarket());
-      }
+      _waitingForTrackingDecision = isFirstLaunch;
       _started = true;
+      if (!isFirstLaunch) unawaited(_reportStartupGoogleMarket());
       unawaited(reportLocationAndDevice());
     } catch (error) {
       _log(error);
@@ -70,11 +68,16 @@ class DaliReportService {
 
   Future<void> resumed() async {}
 
+  Future<void> startupPermissionsResolved() async {
+    await _reportStartupGoogleMarket();
+    await reportAppleToken();
+  }
+
   Future<void> loginSucceeded() async {
     await store.saveLoginAt(_nowMillis());
     unawaited(reportGoogleMarket());
     unawaited(reportLocationAndDevice());
-    unawaited(reportAppleToken());
+    unawaited(_reportAppleToken(force: true));
   }
 
   Future<DaliLocationSnapshot?> currentLocation() {
@@ -142,6 +145,15 @@ class DaliReportService {
     await _reportResolvedGoogleMarket();
   }
 
+  Future<void> _reportStartupGoogleMarket() async {
+    if (_startupGoogleReportTriggered) return;
+    final trackingStatus = await client.config.clientBridge.getTrackingStatus();
+    if (!_isResolvedTrackingStatus(trackingStatus)) return;
+    _startupGoogleReportTriggered = true;
+    _waitingForTrackingDecision = false;
+    await _reportResolvedGoogleMarket();
+  }
+
   Future<void> _reportResolvedGoogleMarket() async {
     if (_marketReporting) return;
     _marketReporting = true;
@@ -195,11 +207,23 @@ class DaliReportService {
   }
 
   Future<void> reportAppleToken() async {
+    await _reportAppleToken(force: false);
+  }
+
+  Future<void> _reportAppleToken({required bool force}) async {
+    String? token;
     try {
-      final token = (await client.config.clientBridge.getPushToken()).trim();
+      token = (await client.config.clientBridge.getPushToken()).trim();
+      if ((!force && _reportedAppleTokens.contains(token)) ||
+          !_reportingAppleTokens.add(token)) {
+        return;
+      }
       await client.reportApplePushToken(token: token);
+      _reportedAppleTokens.add(token);
     } catch (error) {
       _log(error);
+    } finally {
+      if (token != null) _reportingAppleTokens.remove(token);
     }
   }
 
@@ -262,6 +286,8 @@ class DaliReportService {
         final status = event['status'].stringValue;
         if (!_isResolvedTrackingStatus(status)) return;
         _waitingForTrackingDecision = false;
+        if (_startupGoogleReportTriggered) return;
+        _startupGoogleReportTriggered = true;
         unawaited(_reportResolvedGoogleMarket());
       }
     }, onError: _log);

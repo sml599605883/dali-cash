@@ -37,6 +37,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
     ProgressTargetNavigator? navigateProgressTarget,
     ProgressRetryResolver? resolveProgressRetry,
     ProgressAccountResolver? openProgressAccountChange,
+    this.homeRequestTimeout = const Duration(seconds: 20),
   }) : _apiClient = apiClient,
        navigateToLogin = navigateToLogin ?? _defaultNavigateToLogin,
        showLoading = showLoading ?? _defaultAsyncAction,
@@ -62,6 +63,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
   final ProgressTargetNavigator navigateProgressTarget;
   final ProgressRetryResolver resolveProgressRetry;
   final ProgressAccountResolver openProgressAccountChange;
+  final Duration? homeRequestTimeout;
 
   final selectedIndex = 0.obs;
   final homeData = Rxn<HomeData>();
@@ -69,7 +71,8 @@ class MainController extends GetxController with WidgetsBindingObserver {
   final progressError = RxnString();
   final isProgressRefreshing = false.obs;
 
-  bool _homeRefreshRequesting = false;
+  // bool _homeRefreshRequesting = false;
+  int _homeRefreshRequestId = 0;
   bool _minePopupRequesting = false;
   bool _productApplyRequesting = false;
   bool _progressActionRequesting = false;
@@ -77,8 +80,10 @@ class MainController extends GetxController with WidgetsBindingObserver {
   bool _wasInactive = false;
   bool _wasInBackground = false;
   bool _inactiveResumeRefreshConsumed = false;
+  bool _locationPermissionRequesting = false;
+  bool _ignoreLocationPermissionResume = false;
 
-  bool get isRefreshing => _homeRefreshRequesting;
+  // bool get isRefreshing => _homeRefreshRequesting;
   bool get hasApiClient => _apiClient != null;
   ApiClient get apiClient =>
       _apiClient ?? (throw StateError('Network client is not ready'));
@@ -115,6 +120,9 @@ class MainController extends GetxController with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive) {
       _wasInactive = true;
+      if (_locationPermissionRequesting) {
+        _ignoreLocationPermissionResume = true;
+      }
       return;
     }
     if (state == AppLifecycleState.hidden ||
@@ -130,6 +138,11 @@ class MainController extends GetxController with WidgetsBindingObserver {
     final firstInactiveResume = _wasInactive && !_inactiveResumeRefreshConsumed;
     _wasInactive = false;
     _wasInBackground = false;
+    if (_ignoreLocationPermissionResume && !resumedFromBackground) {
+      _ignoreLocationPermissionResume = false;
+      return;
+    }
+    _ignoreLocationPermissionResume = false;
     if (!resumedFromBackground && !firstInactiveResume) {
       return;
     }
@@ -157,6 +170,14 @@ class MainController extends GetxController with WidgetsBindingObserver {
 
   void onRouteChanged() {
     unawaited(_requestVisibleTabData());
+  }
+
+  void beginLocationPermissionRequest() {
+    _locationPermissionRequesting = true;
+  }
+
+  void endLocationPermissionRequest() {
+    _locationPermissionRequesting = false;
   }
 
   Future<void> _requestVisibleTabData() async {
@@ -325,7 +346,7 @@ class MainController extends GetxController with WidgetsBindingObserver {
     if (!_isHomeVisible) {
       return;
     }
-    await _requestHomeData(showPopup: true, presentLoading: true);
+    await _requestHomeData(showPopup: true);
   }
 
   bool get _isHomeVisible => selectedIndex.value == 0 && _isMainRoute;
@@ -353,12 +374,17 @@ class MainController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> refreshHome() async {
-    await _requestHomeData(showPopup: true, presentLoading: true);
+    await _requestHomeData(showPopup: true);
+  }
+
+  Future<void> refreshHomeAfterLogin() async {
+    selectedIndex.value = 0;
+    await _requestHomeData(showPopup: true);
   }
 
   Future<void> refreshProgress() async {
     final client = _apiClient;
-    if (_homeRefreshRequesting || client == null) {
+    if (client == null) {
       return;
     }
     isProgressRefreshing.value = true;
@@ -371,43 +397,54 @@ class MainController extends GetxController with WidgetsBindingObserver {
 
   Future<bool> _requestHomeData({
     required bool showPopup,
-    bool presentLoading = false,
     bool reportProgressError = false,
   }) async {
     final client = _apiClient;
-    if (_homeRefreshRequesting || client == null) {
+    if (client == null) {
       return false;
     }
-    _homeRefreshRequesting = true;
+    final requestId = ++_homeRefreshRequestId;
+    bool isCurrentRequest() => requestId == _homeRefreshRequestId;
     var homeLoadingVisible = false;
-    if (presentLoading) {
-      unawaited(showLoading());
-      homeLoadingVisible = true;
-    }
-    final homeRequest = client.homePage();
-    Future<ApiResponse>? popupRequest;
-    if (showPopup) {
-      try {
-        popupRequest = client.dialog(scene: 1);
-      } catch (_) {
-        popupRequest = null;
-      }
-    }
-    if (popupRequest != null) {
-      unawaited(_handlePopup(popupRequest));
-    }
     try {
+      await showLoading();
+      homeLoadingVisible = true;
+      if (!isCurrentRequest()) {
+        return false;
+      }
+
+      final homeRequest = client.homePage();
+      Future<ApiResponse>? popupRequest;
+      if (showPopup) {
+        try {
+          popupRequest = client.dialog(scene: 1);
+        } catch (_) {
+          popupRequest = null;
+        }
+      }
+      if (popupRequest != null) {
+        unawaited(
+          _handlePopup(popupRequest, isCurrentRequest: isCurrentRequest),
+        );
+      }
+
       try {
-        final response = await homeRequest;
+        final response = await _awaitHomeResponse(homeRequest);
+        if (!isCurrentRequest()) {
+          return false;
+        }
         homeData.value = HomeData.fromJson(response.states);
         if (homeLoadingVisible) {
-          await dismissLoading();
+          await _dismissHomeLoading();
           homeLoadingVisible = false;
         }
         if (reportProgressError) {
           progressError.value = null;
         }
       } catch (error) {
+        if (!isCurrentRequest()) {
+          return false;
+        }
         homeLoadingVisible = false;
         if (reportProgressError) {
           progressError.value = _resolvedError(error);
@@ -418,10 +455,11 @@ class MainController extends GetxController with WidgetsBindingObserver {
 
       return true;
     } finally {
-      if (homeLoadingVisible) {
-        await dismissLoading();
-      }
-      _homeRefreshRequesting = false;
+      try {
+        if (homeLoadingVisible && isCurrentRequest()) {
+          await _dismissHomeLoading();
+        }
+      } finally {}
     }
   }
 
@@ -446,9 +484,15 @@ class MainController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _handlePopup(Future<ApiResponse> request) async {
+  Future<void> _handlePopup(
+    Future<ApiResponse> request, {
+    bool Function()? isCurrentRequest,
+  }) async {
     try {
       final response = await request;
+      if (isCurrentRequest != null && !isCurrentRequest()) {
+        return;
+      }
       final popup = HomePopupData.fromResponse(response.states);
       if (await HomePopup.show(popup)) {
         return;
@@ -464,7 +508,29 @@ class MainController extends GetxController with WidgetsBindingObserver {
   }
 
   String _resolvedError(Object error) {
-    return error is ApiBusinessException ? error.message : 'Request failed';
+    if (error is ApiBusinessException) {
+      return error.message;
+    }
+    if (error is TimeoutException) {
+      return 'Request timed out';
+    }
+    return 'Request failed';
+  }
+
+  Future<void> _dismissHomeLoading() async {
+    try {
+      await dismissLoading();
+    } catch (_) {
+      // Loading is only presentation; refresh completion must not depend on it.
+    }
+  }
+
+  Future<ApiResponse> _awaitHomeResponse(Future<ApiResponse> request) {
+    final timeout = homeRequestTimeout;
+    if (timeout == null) {
+      return request;
+    }
+    return request.timeout(timeout);
   }
 }
 

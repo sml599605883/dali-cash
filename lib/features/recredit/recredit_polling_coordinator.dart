@@ -139,6 +139,6 @@ class RecreditPollingCoordinator {
   }
 
   static Future<void> _defaultAdmissionRunner(String productId) {
-    return NavigationHelper.applyProduct(productId);
+    return NavigationHelper.applyProductAfterRecredit(productId);
   }
 }

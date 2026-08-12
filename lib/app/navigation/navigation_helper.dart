@@ -64,6 +64,8 @@ abstract final class NavigationHelper {
     AppRoutes.workInformation,
     AppRoutes.emergencyContact,
     AppRoutes.bindCard,
+    AppRoutes.accountList,
+    AppRoutes.webView,
   };
 
   static NavigationAsyncPresenter loadingPresenter = defaultLoadingPresenter;
@@ -463,9 +465,21 @@ abstract final class NavigationHelper {
     await _dispatchDeepLink(target);
   }
 
-  static Future<void> applyProduct(
+  static Future<void> applyProduct(String productId, {String source = '0'}) {
+    return _applyProduct(productId, source: source, checkLocationAccess: true);
+  }
+
+  static Future<void> applyProductAfterRecredit(
     String productId, {
     String source = '0',
+  }) {
+    return _applyProduct(productId, source: source, checkLocationAccess: false);
+  }
+
+  static Future<void> _applyProduct(
+    String productId, {
+    required String source,
+    required bool checkLocationAccess,
   }) async {
     final normalizedProductId = productId.trim();
     if (normalizedProductId.isEmpty) {
@@ -474,7 +488,11 @@ abstract final class NavigationHelper {
 
     try {
       final apiClient = Get.find<ApiClient>();
-      await _productFlow(apiClient).apply(normalizedProductId, source: source);
+      await _productFlow(apiClient).apply(
+        normalizedProductId,
+        source: source,
+        checkLocationAccess: checkLocationAccess,
+      );
     } catch (error) {
       await errorPresenter(ApiErrorMessage.resolve(error));
     }
@@ -510,6 +528,11 @@ abstract final class NavigationHelper {
       case DaliDeepLinkKind.login:
         toLogin<void>();
         return;
+      case DaliDeepLinkKind.order:
+        toMineOrderList<void>(
+          initialStatus: MineOrderStatus.fromCode(target.orderStatusCode),
+        );
+        return;
       case DaliDeepLinkKind.productDetail:
         final productId = target.productId;
         if (productId.isEmpty) {
@@ -531,6 +554,14 @@ abstract final class NavigationHelper {
         } catch (error) {
           await errorPresenter(ApiErrorMessage.resolve(error));
         }
+        return;
+      case DaliDeepLinkKind.admission:
+        final productId = target.productId;
+        if (productId.isEmpty) {
+          logger('admission target is missing highlands: ${target.alias}');
+          return;
+        }
+        await applyProduct(productId);
         return;
       case DaliDeepLinkKind.recredit:
         final mergedArguments = <String, dynamic>{
@@ -603,7 +634,16 @@ abstract final class NavigationHelper {
   }
 
   static Future<bool> _ensureLocationAccess() async {
-    final decision = await certificationLocationRequester();
+    final controller = Get.isRegistered<MainController>()
+        ? Get.find<MainController>()
+        : null;
+    controller?.beginLocationPermissionRequest();
+    final CertificationLocationDecision decision;
+    try {
+      decision = await certificationLocationRequester();
+    } finally {
+      controller?.endLocationPermissionRequest();
+    }
     if (decision == CertificationLocationDecision.granted) {
       return true;
     }

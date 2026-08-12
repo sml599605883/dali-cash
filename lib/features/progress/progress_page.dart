@@ -245,7 +245,7 @@ class _ProgressCard extends StatelessWidget {
                     Padding(
                       padding: EdgeInsets.fromLTRB(
                         ScreenAdapter.width(24),
-                        ScreenAdapter.height(44),
+                        ScreenAdapter.height(61),
                         ScreenAdapter.width(24),
                         0,
                       ),
@@ -287,7 +287,7 @@ class _ProgressCard extends StatelessWidget {
           Positioned(
             left: ScreenAdapter.width(-12),
             right: ScreenAdapter.width(-12),
-            top: 0,
+            top: ScreenAdapter.width(8),
             height: ScreenAdapter.height(40),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -303,26 +303,25 @@ class _ProgressCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: ScreenAdapter.width(18),
-                        height: ScreenAdapter.height(18),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(
-                            ScreenAdapter.width(3),
+                      if (item.productLogo.isNotEmpty) ...[
+                        SizedBox(
+                          key: const Key('progress-product-logo'),
+                          width: ScreenAdapter.width(18),
+                          height: ScreenAdapter.height(18),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              ScreenAdapter.width(3),
+                            ),
+                            child: Image.network(
+                              item.productLogo,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) =>
+                                  const SizedBox.shrink(),
+                            ),
                           ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'C',
-                          style: TextStyle(
-                            color: AppColors.surface,
-                            fontSize: ScreenAdapter.font(11),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: ScreenAdapter.width(4)),
+                        SizedBox(width: ScreenAdapter.width(4)),
+                      ],
                       Expanded(
                         child: Text(
                           item.productName,
@@ -410,41 +409,51 @@ class _ActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (actions.isNotEmpty) {
+      final hasMultipleActions = actions.length > 1;
       return SizedBox(
         height: ScreenAdapter.height(40),
         child: Row(
-          children: actions
-              .map(
-                (action) => Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onActionTap == null
-                        ? null
-                        : () => onActionTap!(action),
-                    child: DecoratedBox(
-                      key: Key('progress-action-${action.type}'),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.horizontal(
-                          left: Radius.circular(ScreenAdapter.width(8)),
-                          right: Radius.circular(ScreenAdapter.width(8)),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          action.label,
-                          style: _actionTextStyle(
-                            presentation.isRed
-                                ? AppColors.alert
-                                : AppColors.primary,
-                          ),
-                        ),
+          children: List<Widget>.generate(actions.length, (index) {
+            final action = actions[index];
+            final isFirst = index == 0;
+            final isLast = index == actions.length - 1;
+            final isHighlightedRetry =
+                hasMultipleActions && action.type == 'retry';
+            final radius = Radius.circular(ScreenAdapter.width(8));
+            return Expanded(
+              flex: actions.length == 2 ? (isFirst ? 160 : 159) : 1,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onActionTap == null ? null : () => onActionTap!(action),
+                child: DecoratedBox(
+                  key: Key('progress-action-${action.type}'),
+                  decoration: BoxDecoration(
+                    color: isHighlightedRetry
+                        ? AppColors.progressRetry
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.only(
+                      topLeft: isFirst ? radius : Radius.zero,
+                      bottomLeft: isFirst ? radius : Radius.zero,
+                      topRight: isLast ? radius : Radius.zero,
+                      bottomRight: isLast ? radius : Radius.zero,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      action.label,
+                      style: _actionTextStyle(
+                        isHighlightedRetry
+                            ? AppColors.surface
+                            : presentation.isRed
+                            ? AppColors.alert
+                            : AppColors.primary,
                       ),
                     ),
                   ),
                 ),
-              )
-              .toList(growable: false),
+              ),
+            );
+          }),
         ),
       );
     }

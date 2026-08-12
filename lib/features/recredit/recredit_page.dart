@@ -105,31 +105,25 @@ class _RecreditPageState extends State<RecreditPage> {
     ScreenAdapter.init(context);
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    AppAssets.recreditIllustration,
-                    key: const Key('recredit-illustration'),
-                    width: ScreenAdapter.width(120),
-                    height: ScreenAdapter.height(102),
-                    fit: BoxFit.contain,
-                  ),
-                  SizedBox(height: ScreenAdapter.height(18)),
-                  const _RecreditMessage(),
-                  SizedBox(height: ScreenAdapter.height(11)),
-                  _RecreditProgress(progress: _progress),
-                ],
+      body: ListView(
+        padding: EdgeInsets.only(top: ScreenAdapter.height(290)),
+        children: [
+          Column(
+            children: [
+              Image.asset(
+                AppAssets.recreditIllustration,
+                key: const Key('recredit-illustration'),
+                width: ScreenAdapter.width(120),
+                height: ScreenAdapter.height(102),
+                fit: BoxFit.contain,
               ),
-            ),
-          );
-        },
+              SizedBox(height: ScreenAdapter.height(18)),
+              const _RecreditMessage(),
+              SizedBox(height: ScreenAdapter.height(11)),
+              _RecreditProgress(progress: _progress),
+            ],
+          ),
+        ],
       ),
     );
   }

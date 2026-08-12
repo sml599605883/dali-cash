@@ -120,12 +120,35 @@ void main() {
       controller.homeData.value?.loanOffer?.productId,
       'available-before-popup',
     );
-    expect(controller.isRefreshing, isFalse);
     expect(loadingEvents, ['loading', 'dismiss']);
 
     dialogCompleter.complete(_dialogResponse(0));
     await request;
   });
+
+  test(
+    'waits for Home loading presentation before starting the request',
+    () async {
+      final loading = Completer<void>();
+      final value = MainController(
+        apiClient: apiClient,
+        showError: errors.add,
+        showNotice: notices.add,
+        showLoading: () => loading.future,
+      );
+      addTearDown(value.onClose);
+      apiClient.homeReplies.add(() async => _homeResponse());
+      apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+
+      final request = value.requestHomeDataIfVisible();
+      await Future<void>.delayed(Duration.zero);
+      expect(apiClient.homeCalls, 0);
+
+      loading.complete();
+      await request;
+      expect(apiClient.homeCalls, 1);
+    },
+  );
 
   test('popup type 0 and unsupported types remain silent', () async {
     for (final type in [0, 4]) {
@@ -166,7 +189,6 @@ void main() {
       expect(controller.homeData.value, same(previous));
       expect(errors, ['Home unavailable']);
       expect(apiClient.dialogScenes, [1]);
-      expect(controller.isRefreshing, isFalse);
     },
   );
 
@@ -181,6 +203,62 @@ void main() {
     expect(apiClient.dialogScenes, [1]);
   });
 
+  test('timed out Home request allows a retry', () async {
+    final pendingHomeRequest = Completer<ApiResponse>();
+    final value = MainController(
+      apiClient: apiClient,
+      showError: errors.add,
+      showNotice: notices.add,
+      showLoading: () async => loadingEvents.add('loading'),
+      dismissLoading: () async => loadingEvents.add('dismiss'),
+      homeRequestTimeout: Duration.zero,
+    );
+    addTearDown(value.onClose);
+    apiClient.homeReplies.add(() => pendingHomeRequest.future);
+    apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+
+    await value.requestHomeDataIfVisible();
+
+    expect(errors, ['Request timed out']);
+    expect(loadingEvents, ['loading']);
+
+    apiClient.homeReplies.add(() async => _homeResponse(productId: 'retry'));
+    apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+    await value.requestHomeDataIfVisible();
+
+    expect(apiClient.homeCalls, 2);
+    expect(value.homeData.value?.loanOffer?.productId, 'retry');
+  });
+
+  test(
+    'Loading dismissal failure does not prevent the next Home refresh',
+    () async {
+      final value = MainController(
+        apiClient: apiClient,
+        showError: errors.add,
+        showNotice: notices.add,
+        showLoading: () async => loadingEvents.add('loading'),
+        dismissLoading: () async => throw StateError('overlay disposed'),
+      );
+      addTearDown(value.onClose);
+      apiClient.homeReplies.addAll([
+        () async => _homeResponse(productId: 'first'),
+        () async => _homeResponse(productId: 'second'),
+      ]);
+      apiClient.dialogReplies.addAll([
+        (_) async => _dialogResponse(0),
+        (_) async => _dialogResponse(0),
+      ]);
+
+      await value.requestHomeDataIfVisible();
+      await value.requestHomeDataIfVisible();
+
+      expect(apiClient.homeCalls, 2);
+      expect(value.homeData.value?.loanOffer?.productId, 'second');
+      expect(errors, isEmpty);
+    },
+  );
+
   test('popup failure stays silent and retains loaded home data', () async {
     apiClient.homeReplies.add(() async => _homeResponse(productId: 'kept'));
     apiClient.dialogReplies.add(
@@ -192,28 +270,62 @@ void main() {
     expect(controller.homeData.value?.loanOffer?.productId, 'kept');
     expect(errors, isEmpty);
     expect(notices, isEmpty);
-    expect(controller.isRefreshing, isFalse);
+  });
+
+  test('overlapping refreshes retain the newest Home response', () async {
+    final firstHome = Completer<ApiResponse>();
+    apiClient.homeReplies.addAll([
+      () => firstHome.future,
+      () async => _homeResponse(productId: 'newest'),
+    ]);
+    apiClient.dialogReplies.addAll([
+      (_) async => _dialogResponse(0),
+      (_) async => _dialogResponse(0),
+    ]);
+
+    final first = controller.requestHomeDataIfVisible();
+    await pumpEventQueue();
+    final overlap = controller.requestHomeDataIfVisible();
+    await overlap;
+    expect(apiClient.homeCalls, 2);
+    expect(controller.homeData.value?.loanOffer?.productId, 'newest');
+
+    firstHome.complete(_homeResponse(productId: 'older'));
+    await first;
+
+    expect(controller.homeData.value?.loanOffer?.productId, 'newest');
+    expect(apiClient.dialogScenes, [1, 1]);
   });
 
   test(
-    'overlapping refreshes share the lock and do not duplicate requests',
+    'login refresh supersedes an in-flight logged-out Home request',
     () async {
-      final homeCompleter = Completer<ApiResponse>();
-      apiClient.homeReplies.add(() => homeCompleter.future);
-      apiClient.dialogReplies.add((_) async => _dialogResponse(0));
+      final loggedOutHome = Completer<ApiResponse>();
+      final loggedOutPopup = Completer<ApiResponse>();
+      apiClient.homeReplies.addAll([
+        () => loggedOutHome.future,
+        () async => _homeResponse(productId: 'logged-in-home'),
+      ]);
+      apiClient.dialogReplies.addAll([
+        (_) => loggedOutPopup.future,
+        (_) async => _dialogResponse(0),
+      ]);
 
-      final first = controller.requestHomeDataIfVisible();
-      final overlap = controller.requestHomeDataIfVisible();
-      expect(controller.isRefreshing, isTrue);
-      expect(apiClient.homeCalls, 1);
+      final loggedOutRefresh = controller.requestHomeDataIfVisible();
+      await pumpEventQueue();
+      final loginRefresh = controller.refreshHomeAfterLogin();
+      await loginRefresh;
 
-      await overlap;
-      homeCompleter.complete(_homeResponse());
-      await first;
+      expect(apiClient.homeCalls, 2);
+      expect(controller.homeData.value?.loanOffer?.productId, 'logged-in-home');
+      loggedOutHome.complete(_homeResponse(productId: 'logged-out-home'));
+      loggedOutPopup.complete(_dialogResponse(1));
+      await loggedOutRefresh;
+      await pumpEventQueue();
 
-      expect(apiClient.homeCalls, 1);
-      expect(apiClient.dialogScenes, [1]);
-      expect(controller.isRefreshing, isFalse);
+      expect(controller.homeData.value?.loanOffer?.productId, 'logged-in-home');
+      expect(notices, isEmpty);
+      expect(loadingEvents, ['loading', 'loading', 'dismiss']);
     },
   );
 
@@ -733,6 +845,17 @@ void main() {
     controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await pumpEventQueue();
     expect(apiClient.homeCalls, 1);
+  });
+
+  test('location permission prompt resume does not refresh Home', () async {
+    controller.beginLocationPermissionRequest();
+    controller.didChangeAppLifecycleState(AppLifecycleState.inactive);
+    controller.endLocationPermissionRequest();
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await pumpEventQueue();
+
+    expect(apiClient.homeCalls, 0);
+    expect(apiClient.dialogScenes, isEmpty);
   });
 
   test(

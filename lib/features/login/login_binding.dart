@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../core/json/json.dart';
 import '../../core/network/api_client.dart';
 import '../../core/report/dali_report_service.dart';
+import '../main_shell/main_controller.dart';
 import 'login_controller.dart';
 
 typedef LoginReportAction = Future<void> Function();
@@ -68,6 +69,9 @@ class LoginBinding extends Bindings {
               startTimeSeconds: resolvedStartTime,
             ),
           );
+          if (Get.isRegistered<MainController>()) {
+            unawaited(Get.find<MainController>().refreshHomeAfterLogin());
+          }
           navigateBack();
         },
       ),

@@ -20,7 +20,7 @@ void main() {
     final illustration = find.byKey(const Key('recredit-illustration'));
     expect(illustration, findsOneWidget);
     expect(tester.getSize(illustration), const Size(120, 102));
-    expect(tester.getTopLeft(illustration).dy, closeTo(301.5, 1));
+    expect(tester.getTopLeft(illustration).dy, closeTo(290, 1));
     expect(
       find.text(
         'Calculating your credit limit, just 30 seconds',
@@ -59,5 +59,28 @@ void main() {
     expect(find.text('50%'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('99%'), findsOneWidget);
+  });
+
+  testWidgets('keeps the design anchor and scrolls on a short viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(375, 420);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const GetMaterialApp(home: RecreditPage()));
+    await tester.pump();
+
+    final illustration = find.byKey(const Key('recredit-illustration'));
+    expect(tester.getTopLeft(illustration).dy, closeTo(290, 1));
+    expect(tester.takeException(), isNull);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -180));
+    await tester.pump();
+
+    expect(find.byKey(const Key('recredit-progress-label')), findsOneWidget);
+    expect(tester.getTopLeft(illustration).dy, lessThan(290));
+    expect(tester.takeException(), isNull);
   });
 }

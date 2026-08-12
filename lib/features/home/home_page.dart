@@ -46,6 +46,11 @@ class HomePage extends GetView<MainController> {
                   final showBanner = delivered == null || banners!.isNotEmpty;
                   final showRecommendations =
                       delivered == null || recommendations!.isNotEmpty;
+                  final onLoanTap = loanOffer == null
+                      ? null
+                      : () => unawaited(
+                          controller.applyProduct(loanOffer.productId),
+                        );
 
                   return RefreshIndicator(
                     onRefresh: controller.refreshHome,
@@ -69,13 +74,7 @@ class HomePage extends GetView<MainController> {
                                 SizedBox(height: ScreenAdapter.height(16)),
                                 LoanOfferCard(
                                   offer: loanOffer,
-                                  onTap: loanOffer == null
-                                      ? null
-                                      : () => unawaited(
-                                          controller.applyProduct(
-                                            loanOffer.productId,
-                                          ),
-                                        ),
+                                  onTap: onLoanTap,
                                 ),
                               ],
                               if (creditActivationItems?.isNotEmpty ==
@@ -83,6 +82,7 @@ class HomePage extends GetView<MainController> {
                                 SizedBox(height: ScreenAdapter.height(16)),
                                 CreditActivationProgress(
                                   items: creditActivationItems!,
+                                  onTap: onLoanTap,
                                 ),
                               ],
                               if (showBanner) ...[

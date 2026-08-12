@@ -4,6 +4,7 @@ import 'package:dali_cash/app/app.dart';
 import 'package:dali_cash/app/layout/screen_adapter.dart';
 import 'package:dali_cash/app/resources/app_assets.dart';
 import 'package:dali_cash/app/routes/app_routes.dart';
+import 'package:dali_cash/app/theme/app_colors.dart';
 import 'package:dali_cash/core/network/api_client.dart';
 import 'package:dali_cash/core/network/api_config.dart';
 import 'package:dali_cash/core/network/api_endpoints.dart';
@@ -162,6 +163,10 @@ void main() {
     await _pumpShell(tester);
 
     expect(find.byType(CreditActivationProgress), findsOneWidget);
+    expect(
+      find.byKey(const Key('home-credit-activation-scroll')),
+      findsNothing,
+    );
     final loanRect = tester.getRect(
       find.byKey(const Key('home-loan-offer-card')),
     );
@@ -222,7 +227,10 @@ void main() {
       progressRect.center.dx,
     );
     expect(trackRect.top, greaterThan(firstStepRect.bottom));
-    expect(trackRect.width, 295);
+    expect(
+      trackRect.width,
+      moreOrLessEquals(progressRect.width - ScreenAdapter.width(48)),
+    );
     expect(firstAmountRect.top, greaterThan(trackRect.bottom));
   });
 
@@ -241,6 +249,33 @@ void main() {
     expect(find.byType(CreditActivationProgress), findsNothing);
   });
 
+  testWidgets('credit activation progress uses the large-card action', (
+    tester,
+  ) async {
+    final sessionStore = SessionStore.memory();
+    await sessionStore.saveSessionId('session-id');
+    final appliedProductIds = <String>[];
+    final controller = _registerController(
+      sessionStore: sessionStore,
+      onAuthenticatedProductApply: (productId) async {
+        appliedProductIds.add(productId);
+      },
+    );
+    controller.homeData.value = HomeData(
+      loanOffer: _loanOfferWithCreditActivation(),
+      banners: const <HomeBannerData>[],
+      recommendations: const <HomeRecommendationData>[],
+    );
+
+    await _pumpShell(tester);
+    await tester.tap(find.byKey(const Key('home-credit-activation-progress')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('home-loan-offer-card')));
+    await tester.pump();
+
+    expect(appliedProductIds, ['server-loan', 'server-loan']);
+  });
+
   testWidgets('renders server progress data from the shared home response', (
     tester,
   ) async {
@@ -251,6 +286,17 @@ void main() {
     await _pumpShell(tester);
 
     expect(find.byKey(const Key('progress-card')), findsOneWidget);
+    expect(find.byKey(const Key('progress-product-logo')), findsOneWidget);
+    final logo = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('progress-product-logo')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(
+      (logo.image as NetworkImage).url,
+      'https://example.com/progress-logo.png',
+    );
     expect(find.text('Server Cash'), findsOneWidget);
     expect(find.text('PHP 2,000.00'), findsOneWidget);
     expect(find.text('Application date'), findsOneWidget);
@@ -279,6 +325,86 @@ void main() {
 
     expect(cardItems.single.productId, '9');
     expect(actionTypes, ['retry']);
+  });
+
+  testWidgets('renders connected Progress buttons from multiple actions', (
+    tester,
+  ) async {
+    final actionTypes = <String>[];
+    final controller = _registerController(
+      onProgressActionTap: (item, action) async => actionTypes.add(action.type),
+    );
+    controller.homeData.value = HomeData(
+      loanOffer: null,
+      banners: const <HomeBannerData>[],
+      recommendations: const <HomeRecommendationData>[],
+      progressItems: const <ProgressItem>[
+        ProgressItem(
+          emblemize: ProgressEmblemize.disbursementFailed,
+          actions: <ProgressAction>[
+            ProgressAction(
+              type: 'retry',
+              visible: true,
+              label: 'Try again',
+              badge: '',
+              route: '',
+            ),
+            ProgressAction(
+              type: 'change',
+              visible: true,
+              label: 'Change',
+              badge: '',
+              route: '',
+            ),
+          ],
+          usesServerActions: true,
+        ),
+      ],
+    );
+    controller.selectedIndex.value = 1;
+
+    await _pumpShell(tester);
+
+    final retryFinder = find.byKey(const Key('progress-action-retry'));
+    final changeFinder = find.byKey(const Key('progress-action-change'));
+    final retryDecoration =
+        tester.widget<DecoratedBox>(retryFinder).decoration as BoxDecoration;
+    final changeDecoration =
+        tester.widget<DecoratedBox>(changeFinder).decoration as BoxDecoration;
+    const leftRadius = BorderRadius.only(
+      topLeft: Radius.circular(8),
+      bottomLeft: Radius.circular(8),
+    );
+    const rightRadius = BorderRadius.only(
+      topRight: Radius.circular(8),
+      bottomRight: Radius.circular(8),
+    );
+
+    expect(retryDecoration.color, AppColors.progressRetry);
+    expect(retryDecoration.borderRadius, leftRadius);
+    expect(changeDecoration.color, AppColors.surface);
+    expect(changeDecoration.borderRadius, rightRadius);
+    expect(tester.getSize(retryFinder), const Size(160, 40));
+    expect(tester.getSize(changeFinder), const Size(159, 40));
+    expect(
+      tester.getRect(retryFinder).right,
+      tester.getRect(changeFinder).left,
+    );
+    expect(
+      tester.widget<Text>(find.text('Try again')).style?.color,
+      AppColors.surface,
+    );
+    expect(
+      tester.widget<Text>(find.text('Change')).style?.color,
+      AppColors.primary,
+    );
+
+    await tester.tap(retryFinder);
+    await tester.pump();
+    await tester.tap(changeFinder);
+    await tester.pump();
+
+    expect(actionTypes, ['retry', 'change']);
   });
 
   testWidgets('shows Progress loading and retryable first-load error states', (
@@ -897,6 +1023,7 @@ HomeData _deliveredHomeData() {
         orderNumber: 'order-1',
         productId: '9',
         productName: 'Server Cash',
+        productLogo: 'https://example.com/progress-logo.png',
         amount: 'PHP 2,000.00',
         amountLabel: 'Loan Amount',
         date: '28-12-2022',

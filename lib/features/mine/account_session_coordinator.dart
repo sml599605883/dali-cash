@@ -32,8 +32,8 @@ class AccountSessionCoordinator {
         AccountSessionAction.deleteAccount => apiClient.userDelete(),
       };
       await sessionStore.clearSession();
-      await returnHome();
       await dismissLoading();
+      await returnHome();
       return true;
     } catch (error) {
       await showError(ApiErrorMessage.resolve(error));

@@ -39,7 +39,7 @@ void main() {
     expect(await store.sessionId(), isEmpty);
     expect(await store.phone(), '9123456789');
     expect(await store.deviceName(), 'iPhone 17');
-    expect(events, <String>['loading', 'home', 'dismiss']);
+    expect(events, <String>['loading', 'dismiss', 'home']);
   });
 
   test('delete account uses delete endpoint before clearing session', () async {
@@ -51,7 +51,7 @@ void main() {
     expect(apiClient.logoutCalls, 0);
     expect(apiClient.deleteCalls, 1);
     expect(await store.sessionId(), isEmpty);
-    expect(events, <String>['loading', 'home', 'dismiss']);
+    expect(events, <String>['loading', 'dismiss', 'home']);
   });
 
   test(

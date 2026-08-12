@@ -9,6 +9,8 @@ import 'package:dali_cash/core/network/api_exception.dart';
 import 'package:dali_cash/core/network/api_response.dart';
 import 'package:dali_cash/core/permissions/permission_coordinator.dart';
 import 'package:dali_cash/core/session/session_store.dart';
+import 'package:dali_cash/features/orders/order_list_item.dart';
+import 'package:dali_cash/features/main_shell/main_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -192,6 +194,58 @@ void main() {
     expect(feedbackEvents, ['loading', 'dismiss']);
     expect(navigationLogs.single, contains('status=0'));
   });
+
+  testWidgets('routes each documented order scheme status to the order list', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+
+    for (final status in MineOrderStatus.values) {
+      await NavigationHelper.navigateRawTarget(
+        'ph://dali-cash/ios/Luminance?anfractuosity=${status.code}',
+      );
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.mineOrderList);
+      expect(Get.arguments, {'initialStatus': status.code});
+
+      NavigationHelper.back<void>();
+      await tester.pumpAndSettle();
+    }
+    expect(navigationLogs, isEmpty);
+  });
+
+  testWidgets('defaults an invalid order scheme status to all', (tester) async {
+    await _pumpRoutes(tester);
+
+    await NavigationHelper.navigateRawTarget(
+      'ph://dali-cash/ios/Luminance?anfractuosity=unknown',
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.arguments, {'initialStatus': MineOrderStatus.all.code});
+  });
+
+  test('runs admission from the documented Mateys scheme product id', () async {
+    await apiClient.config.sessionStore.saveSessionId('session-id');
+
+    await NavigationHelper.navigateRawTarget(
+      'ph://dali-cash/ios/Mateys?highlands=product-42',
+    );
+
+    expect(apiClient.appliedProducts, ['product-42']);
+    expect(apiClient.applySources, ['0']);
+  });
+
+  test(
+    'does not run admission when the Mateys scheme has no product id',
+    () async {
+      await NavigationHelper.navigateRawTarget('ph://dali-cash/ios/Mateys');
+
+      expect(apiClient.appliedProducts, isEmpty);
+      expect(navigationLogs, ['admission target is missing highlands: Mateys']);
+    },
+  );
 
   testWidgets('routes the documented recredit scheme to its waiting page', (
     tester,
@@ -506,6 +560,34 @@ void main() {
     expect(find.byKey(const Key('homeStub')), findsOneWidget);
   });
 
+  testWidgets('confirmation WebView replaces its recommendation WebView', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    NavigationHelper.toWebView<void>(
+      url: 'https://example.test/recommendations',
+    );
+    await tester.pumpAndSettle();
+
+    NavigationHelper.toWebView<void>(
+      url: 'https://example.test/Florescences?thunderstruck=product-42',
+    );
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.webView);
+    expect(
+      find.text('https://example.test/recommendations', skipOffstage: false),
+      findsNothing,
+    );
+
+    NavigationHelper.back<void>();
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, '/');
+    expect(find.byKey(const Key('homeStub')), findsOneWidget);
+    expect(find.byKey(const Key('webViewStub')), findsNothing);
+  });
+
   testWidgets('location denial stops apply before the API request', (
     tester,
   ) async {
@@ -523,6 +605,60 @@ void main() {
     expect(feedbackEvents, isEmpty);
     expect(permissionPrompts, isEmpty);
   });
+
+  testWidgets('location permission resume does not refresh the Home tab', (
+    tester,
+  ) async {
+    await _pumpRoutes(tester);
+    await apiClient.config.sessionStore.saveSessionId('session-id');
+    final controller = MainController(
+      apiClient: apiClient,
+      showError: (_) {},
+      showNotice: (_) {},
+    );
+    Get.put<MainController>(controller);
+    addTearDown(controller.onClose);
+    await tester.pumpAndSettle();
+    final initialHomeCalls = apiClient.homeCalls;
+
+    final permission = Completer<CertificationLocationDecision>();
+    final requestStarted = Completer<void>();
+    NavigationHelper.certificationLocationRequester = () {
+      if (!requestStarted.isCompleted) {
+        requestStarted.complete();
+      }
+      return permission.future;
+    };
+    final apply = NavigationHelper.applyProduct('product-42');
+    await requestStarted.future;
+
+    controller.didChangeAppLifecycleState(AppLifecycleState.inactive);
+    permission.complete(CertificationLocationDecision.denied);
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await apply;
+    await tester.pumpAndSettle();
+
+    expect(apiClient.homeCalls, initialHomeCalls);
+    expect(apiClient.appliedProducts, isEmpty);
+  });
+
+  test(
+    'recredit completion skips location access check before apply',
+    () async {
+      await apiClient.config.sessionStore.saveSessionId('session-id');
+      var locationRequests = 0;
+      NavigationHelper.certificationLocationRequester = () async {
+        locationRequests += 1;
+        return CertificationLocationDecision.denied;
+      };
+
+      await NavigationHelper.applyProductAfterRecredit(' product-42 ');
+
+      expect(locationRequests, 0);
+      expect(apiClient.appliedProducts, ['product-42']);
+      expect(locationReports, ['report']);
+    },
+  );
 
   test('granted location starts reporting without blocking apply', () async {
     await apiClient.config.sessionStore.saveSessionId('session-id');
@@ -1137,6 +1273,12 @@ Future<void> _pumpRoutes(WidgetTester tester) {
               const Scaffold(body: Text('Recredit', key: Key('recreditStub'))),
         ),
         GetPage(
+          name: AppRoutes.mineOrderList,
+          page: () => const Scaffold(
+            body: Text('Orders', key: Key('mineOrderListStub')),
+          ),
+        ),
+        GetPage(
           name: '/middle',
           page: () =>
               const Scaffold(body: Text('Middle', key: Key('middleStub'))),
@@ -1213,6 +1355,7 @@ class _FakeApiClient extends ApiClient {
   final List<String> appliedProducts = <String>[];
   final List<String> applySources = <String>[];
   final List<String> detailedProducts = <String>[];
+  int homeCalls = 0;
   final List<Map<String, String>> productPushRequests = <Map<String, String>>[];
   ApiResponse applyResponse = ApiResponse(
     code: 0,
@@ -1234,6 +1377,12 @@ class _FakeApiClient extends ApiClient {
     message: '',
     states: Json({'millipede': ''}),
   );
+
+  @override
+  Future<ApiResponse> homePage() async {
+    homeCalls++;
+    return ApiResponse(code: 0, message: '', states: Json(null));
+  }
 
   @override
   Future<ApiResponse> productApply({

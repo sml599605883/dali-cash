@@ -18,6 +18,7 @@ MainBinding testMainBinding() {
     showNotice: (_) {},
     showLoading: () async {},
     dismissLoading: () async {},
+    homeRequestTimeout: null,
   );
 }
 

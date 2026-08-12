@@ -15,6 +15,7 @@ class MainBinding extends Bindings {
     HomeMessagePresenter? showNotice,
     HomeAsyncAction? showLoading,
     HomeAsyncAction? dismissLoading,
+    this.homeRequestTimeout = const Duration(seconds: 20),
   }) : showError = showError ?? _showError,
        showNotice = showNotice ?? _showNotice,
        showLoading = showLoading ?? _showLoading,
@@ -25,6 +26,7 @@ class MainBinding extends Bindings {
   final HomeMessagePresenter showNotice;
   final HomeAsyncAction showLoading;
   final HomeAsyncAction dismissLoading;
+  final Duration? homeRequestTimeout;
 
   @override
   void dependencies() {
@@ -43,6 +45,7 @@ class MainBinding extends Bindings {
           showNotice: showNotice,
           showLoading: showLoading,
           dismissLoading: dismissLoading,
+          homeRequestTimeout: homeRequestTimeout,
         ),
       );
     }
