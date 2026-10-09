@@ -390,50 +390,62 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     configureTrustDecisionIfNeeded()
     let license = arguments as? String
     guard let viewController = topViewController() else {
-      result([
-        "success": false,
-        "code": -1,
-        "message": "find ViewController Error",
-        "image": "",
-        "sequence_id": "",
-        "liveness_id": "",
-        "raw": [:]
-      ])
+      result(Self.livenessFailurePayload("find ViewController Error"))
       return
+    }
+
+    // TrustDecision can hand back a non-zero `code` through either callback, so
+    // the returned dictionary — not the callback that fired — decides the result.
+    let deliver: ([AnyHashable: Any]) -> Void = { payload in
+      result(self.livenessPayload(from: payload))
     }
 
     trustDecisionManager?.pointee.showLivenessWithShowStyle(
       viewController,
       license,
       TDLivenessShowStylePresent,
-      { successResult in
-        result(self.wrapLivenessResult(success: true, payload: successResult))
-      },
-      { failResult in
-        result(self.wrapLivenessResult(success: false, payload: failResult))
-      }
+      deliver,
+      deliver
     )
   }
 
-  private func wrapLivenessResult(
-    success: Bool,
-    payload: [AnyHashable: Any]?
-  ) -> [String: Any] {
-    let raw = (payload as? [String: Any]) ?? [:]
-    let code = (raw["code"] as? NSNumber)?.intValue ?? (success ? 0 : -1)
-    let message = raw["message"] as? String ?? ""
-    let image = raw["image"] as? String ?? ""
-    let sequenceId = raw["sequence_id"] as? String ?? ""
-    let livenessId = raw["liveness_id"] as? String ?? ""
+  /// Maps a TrustDecision dictionary onto the Flutter result. Only `code == 0`
+  /// counts as a completed liveness check; any other (or missing) code fails.
+  private func livenessPayload(from payload: [AnyHashable: Any]) -> [String: Any] {
+    let code = Self.livenessCode(payload["code"])
+    let raw = payload as? [String: Any] ?? [:]
     return [
-      "success": success,
+      "success": code == 0,
       "code": code,
-      "message": message,
-      "image": image,
-      "sequence_id": sequenceId,
-      "liveness_id": livenessId,
+      "message": raw["message"] as? String ?? "",
+      "image": raw["image"] as? String ?? "",
+      "sequence_id": raw["sequence_id"] as? String ?? "",
+      "liveness_id": raw["liveness_id"] as? String ?? "",
       "raw": raw
     ]
+  }
+
+  private static func livenessFailurePayload(_ message: String) -> [String: Any] {
+    [
+      "success": false,
+      "code": -1,
+      "message": message,
+      "image": "",
+      "sequence_id": "",
+      "liveness_id": "",
+      "raw": [:]
+    ]
+  }
+
+  private static func livenessCode(_ value: Any?) -> Int {
+    switch value {
+    case let number as NSNumber:
+      return number.intValue
+    case let text as String:
+      return Int(text) ?? -1
+    default:
+      return -1
+    }
   }
 
   private func topViewController(
