@@ -409,13 +409,13 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
     )
   }
 
-  /// Maps a TrustDecision dictionary onto the Flutter result. Only `code == 0`
+  /// Maps a TrustDecision dictionary onto the Flutter result. Only `code == 200`
   /// counts as a completed liveness check; any other (or missing) code fails.
   private func livenessPayload(from payload: [AnyHashable: Any]) -> [String: Any] {
     let code = Self.livenessCode(payload["code"])
     let raw = payload as? [String: Any] ?? [:]
     return [
-      "success": code == 0,
+      "success": code == Self.livenessCompletedCode,
       "code": code,
       "message": raw["message"] as? String ?? "",
       "image": raw["image"] as? String ?? "",
@@ -436,6 +436,9 @@ final class ClientBridgeRegistrar: NSObject, FlutterStreamHandler, CLLocationMan
       "raw": [:]
     ]
   }
+
+  /// TrustDecision reports a completed liveness check with this status code.
+  private static let livenessCompletedCode = 200
 
   private static func livenessCode(_ value: Any?) -> Int {
     switch value {
