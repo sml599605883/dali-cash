@@ -588,7 +588,9 @@ class _BindCardPageState extends State<BindCardPage> {
               Future<void>.value())(result),
     );
     if (!mounted) return;
-    if (!result.success || result.livenessId.trim().isEmpty) {
+    // 同盾活体只要回调带回 liveness_id 即视为识别成功并继续提交，
+    // 不再依据返回码推导的 success 判定，避免 code 判定偏差导致活体结果未被提交。
+    if (result.livenessId.trim().isEmpty) {
       await _showError(
         result.message.trim().isEmpty
             ? 'Liveness verification failed'

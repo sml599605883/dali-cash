@@ -87,6 +87,13 @@ class TrustDecisionLivenessResult {
   final String sequenceId;
   final String livenessId;
   final Map<String, dynamic> raw;
+
+  /// 同盾活体是否返回了可用于上传的数据。
+  ///
+  /// 以回调是否带回图片和 liveness_id 作为识别成功的依据，不依赖返回码推导的
+  /// [success]，避免 code 判定偏差导致上传接口未被调用。
+  bool get hasUploadableData =>
+      image.trim().isNotEmpty && livenessId.trim().isNotEmpty;
 }
 
 class ClientBridge {

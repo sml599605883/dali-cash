@@ -578,6 +578,49 @@ void main() {
     expect(reports, [cancelled]);
   });
 
+  testWidgets('non-success code still submits when liveness_id is present', (
+    tester,
+  ) async {
+    final payloads = <BindCardLivenessPayload>[];
+    final errors = <String>[];
+    const completedWithNonSuccessCode = TrustDecisionLivenessResult(
+      success: false,
+      code: 3001,
+      message: 'completed',
+      image: '',
+      sequenceId: 'sequence-42',
+      livenessId: 'liveness-42',
+      raw: <String, dynamic>{},
+    );
+    await _pumpPage(
+      tester,
+      load: (_) async =>
+          _bindCardData(channelValue: '100', accountValue: '09171234567'),
+      save: (productId, cardType, fields, liveness) async {
+        payloads.add(liveness);
+        return _response(payloads.length == 1 ? 20000 : 0);
+      },
+      showError: (message) async => errors.add(message),
+      requestCameraPermission: () async => PermissionStatus.granted,
+      loadLivenessToken: () async => const BindCardLivenessToken(
+        code: '200',
+        license: 'license-42',
+        faceType: 7,
+        message: '',
+      ),
+      showTrustDecisionLiveness: (_) async => completedWithNonSuccessCode,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bindCardUpload')));
+    await tester.pumpAndSettle();
+
+    expect(errors, isEmpty);
+    expect(payloads, hasLength(2));
+    expect(payloads.last.type, '7');
+    expect(payloads.last.livenessId, 'liveness-42');
+  });
+
   testWidgets('locks duplicate uploads while save is pending', (tester) async {
     final pending = Completer<ApiResponse>();
     var saveCount = 0;

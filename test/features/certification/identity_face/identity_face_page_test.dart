@@ -159,6 +159,70 @@ void main() {
     expect(reports, [cancelled]);
   });
 
+  testWidgets('uploads when the callback carries image and liveness_id', (
+    tester,
+  ) async {
+    final store = SessionStore.memory();
+    await store.saveProductDetailOrderNo('ORDER-42');
+    final client = _FakeFaceApiClient(store);
+    final errors = <String>[];
+    final continuedProducts = <String>[];
+    const nonSuccessCode = TrustDecisionLivenessResult(
+      success: false,
+      code: 3001,
+      message: 'completed',
+      image: 'base64-image',
+      sequenceId: 'sequence-42',
+      livenessId: 'liveness-42',
+      raw: <String, dynamic>{},
+    );
+
+    await _pumpFacePage(
+      tester,
+      client: client,
+      errors: errors,
+      showTrustDecisionLiveness: (_) async => nonSuccessCode,
+      continueProductDetailFlow: (productId) async {
+        continuedProducts.add(productId);
+      },
+    );
+
+    await tester.tap(find.byKey(const Key('identityFaceUploadButton')));
+    await tester.pumpAndSettle();
+
+    expect(errors, isEmpty);
+    expect(client.uploads, hasLength(1));
+    expect(continuedProducts, ['product-42']);
+  });
+
+  testWidgets('stops when the face upload is rejected', (tester) async {
+    final store = SessionStore.memory();
+    await store.saveProductDetailOrderNo('ORDER-42');
+    final client = _FakeFaceApiClient(store)
+      ..uploadResponse = ApiResponse(
+        code: 500,
+        message: 'Face upload failed',
+        states: Json({}),
+      );
+    final errors = <String>[];
+    final continuedProducts = <String>[];
+
+    await _pumpFacePage(
+      tester,
+      client: client,
+      errors: errors,
+      continueProductDetailFlow: (productId) async {
+        continuedProducts.add(productId);
+      },
+    );
+
+    await tester.tap(find.byKey(const Key('identityFaceUploadButton')));
+    await tester.pumpAndSettle();
+
+    expect(errors, ['Face upload failed']);
+    expect(continuedProducts, isEmpty);
+  });
+
   testWidgets('uploads documented TrustDecision fields and continues', (
     tester,
   ) async {
@@ -319,6 +383,11 @@ class _FakeFaceApiClient extends ApiClient {
     : super(ApiConfig(sessionStore: store));
 
   ApiResponse tokenResponse = _tokenResponse();
+  ApiResponse uploadResponse = ApiResponse(
+    code: 0,
+    message: 'success',
+    states: Json({}),
+  );
   final List<String> tokenOrders = <String>[];
   final List<String> tokenTypes = <String>[];
   final List<Map<String, Object?>> uploads = <Map<String, Object?>>[];
@@ -356,6 +425,6 @@ class _FakeFaceApiClient extends ApiClient {
       'pileated': pileated,
       'infantilisms': infantilisms,
     });
-    return ApiResponse(code: 0, message: 'success', states: Json({}));
+    return uploadResponse;
   }
 }

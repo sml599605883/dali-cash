@@ -264,16 +264,14 @@ class _IdentityFacePageState extends State<IdentityFacePage> {
                 DaliReportService.current?.reportTrustDecisionResult(value) ??
                 Future<void>.value())(result),
       );
-      if (!result.success) {
+      // 同盾活体只要回调返回了图片和 liveness_id 即视为识别成功并上传，
+      // 不再依据返回码推导的 success 判定，避免 code 判定偏差导致上传接口未被调用。
+      if (!result.hasUploadableData) {
         await _fail(
           result.message.isNotEmpty
               ? result.message
               : 'Liveness verification failed',
         );
-        return;
-      }
-      if (result.image.trim().isEmpty || result.livenessId.trim().isEmpty) {
-        await _fail('Liveness verification returned incomplete data');
         return;
       }
 
@@ -282,7 +280,7 @@ class _IdentityFacePageState extends State<IdentityFacePage> {
       final filePath = await widget.faceImageFilePathBuilder(
         result.image.trim(),
       );
-      await client.uploadImage(
+      final uploadResponse = await client.uploadImage(
         sociologeses: '10',
         scabble: '1',
         filePath: filePath,
@@ -292,6 +290,14 @@ class _IdentityFacePageState extends State<IdentityFacePage> {
         miscasts: token.license,
         pileated: '7',
       );
+      if (!uploadResponse.isSuccess) {
+        await _fail(
+          uploadResponse.message.isNotEmpty
+              ? uploadResponse.message
+              : 'Face upload failed, please try again',
+        );
+        return;
+      }
       unawaited(
         (widget.reportRiskScene ??
             (startTimeSeconds) =>
